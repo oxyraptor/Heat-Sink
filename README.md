@@ -8,14 +8,13 @@ A complete heat sink optimization system with Django REST Framework backend and 
 
 **Development Mode** (with hot reload):
 ```bash
-cd D:\Akif\Fins\backend
 python start_django.py
 ```
 Server runs at: `http://127.0.0.1:8001/`
 
 **Production Mode** (using Gunicorn):
 ```bash
-cd D:\Akif\Fins\backend
+
 pip install gunicorn
 python start_production.py
 ```
@@ -25,7 +24,6 @@ Server runs at: `http://0.0.0.0:8000/`
 
 ### Frontend (React + TypeScript)
 ```bash
-cd D:\Akif\Fins\frontend
 npm install
 npm run dev
 ```
