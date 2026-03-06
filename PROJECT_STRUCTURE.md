@@ -1,6 +1,6 @@
 # Project Structure - Quick Reference
 
-## 🎯 Overview
+## Overview
 
 The project has been reorganized into a clean, professional structure:
 
@@ -14,7 +14,7 @@ Fins/
 └── README.md         # Main documentation
 ```
 
-## 📂 Detailed Structure
+##  Detailed Structure
 
 ### Backend (`backend/`)
 ```
@@ -106,39 +106,33 @@ ml_model = joblib.load(os.path.join(ML_MODELS_DIR, "thermal_model.pkl"))
 import sys
 sys.path.insert(0, str(BASE_DIR))
 ```
-
-## 🚀 Running the Application
+##  Running the Application
 
 ### Quick Setup (First Time)
 ```bash
-cd D:\Akif\Fins
 python setup.py
 ```
 
 ### Development Mode
 ```bash
-# Terminal 1 - Backend
-cd D:\Akif\Fins\backend
+# Terminal 1 - 
 python start_django.py
 
 # Terminal 2 - Frontend
-cd D:\Akif\Fins\frontend
 npm run dev
 ```
 
 ### Production Mode
 ```bash
 # Backend
-cd D:\Akif\Fins\backend
 pip install gunicorn
 python start_production.py
 
 # Frontend
-cd D:\Akif\Fins\frontend
 npm run build
 ```
 
-## 📝 Important Paths
+## Important Paths
 
 | Old Path | New Path |
 |----------|----------|
@@ -153,7 +147,7 @@ npm run build
 | `CODE_EXPLAINED.md` | `docs/CODE_EXPLAINED.md` |
 | `Scraper/` | `scripts/Scraper/` |
 
-## ✅ Benefits of New Structure
+## Benefits of New Structure
 
 1. **Clear Separation**: Backend, frontend, docs, and scripts are clearly separated
 2. **Professional**: Follows industry-standard project layout
