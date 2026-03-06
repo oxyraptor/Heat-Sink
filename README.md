@@ -7,26 +7,32 @@ A complete heat sink optimization system with Django REST Framework backend and 
 ### Backend (Django)
 
 **Development Mode** (with hot reload):
+
 ```bash
 python start_django.py
 ```
+
 Server runs at: `http://127.0.0.1:8001/`
 
 **Production Mode** (using Gunicorn):
+
 ```bash
 
 pip install gunicorn
 python start_production.py
 ```
+
 Server runs at: `http://0.0.0.0:8000/`
 
 > **Note**: The development server warning is normal - use `start_django.py` for development and `start_production.py` for production deployment.
 
 ### Frontend (React + TypeScript)
+
 ```bash
 npm install
 npm run dev
 ```
+
 Frontend runs at: `http://localhost:5174/`
 
 ## 📁 Project Structure
@@ -96,20 +102,22 @@ Fins/
 
 ### Base URL: `http://127.0.0.1:8001/`
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/` | GET | API status |
-| `/materials/` | GET | List available alloys |
-| `/recommend/` | POST | Heat sink optimization |
-| `/predict-ml/` | POST | ML-based prediction |
+| Endpoint       | Method | Description            |
+| -------------- | ------ | ---------------------- |
+| `/`            | GET    | API status             |
+| `/materials/`  | GET    | List available alloys  |
+| `/recommend/`  | POST   | Heat sink optimization |
+| `/predict-ml/` | POST   | ML-based prediction    |
 
 ## 📦 Dependencies
 
 ### Backend
+
 ```bash
 cd backend
 pip install -r requirements_django.txt
 ```
+
 - Django 6.0.3
 - djangorestframework 3.16.1
 - django-cors-headers 4.9.0
@@ -117,10 +125,12 @@ pip install -r requirements_django.txt
 - gunicorn (for production)
 
 ### Frontend
+
 ```bash
 cd frontend
 npm install
 ```
+
 - React 19.0.0
 - TypeScript 5.x
 - Vite 5.4.21
@@ -130,18 +140,21 @@ npm install
 ## 🧪 Development
 
 ### Run Backend
+
 ```bash
 cd backend
 python manage.py runserver 8001
 ```
 
 ### Run Frontend
+
 ```bash
 cd frontend
 npm run dev
 ```
 
 ### Run Tests
+
 ```bash
 cd backend
 python manage.py test
@@ -161,6 +174,7 @@ python manage.py test
 ## 🚢 Production Deployment
 
 ### Backend (Gunicorn)
+
 ```bash
 cd backend
 pip install gunicorn
@@ -168,6 +182,7 @@ gunicorn fins_project.wsgi:application --bind 0.0.0.0:8000
 ```
 
 ### Frontend (Build)
+
 ```bash
 cd frontend
 npm run build

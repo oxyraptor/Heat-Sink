@@ -172,8 +172,12 @@ function App() {
   const handleAnalyze = async () => {
     setLoading(true);
     setError(null);
+    setResults(null);
 
     try {
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => controller.abort(), 45000);
+
       // Use relaxed defaults for optional parameters to ensure feasible design
       const payload = {
         motor: motorData,
@@ -197,7 +201,9 @@ function App() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+      window.clearTimeout(timeoutId);
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
@@ -206,7 +212,13 @@ function App() {
       const data = await response.json();
       setResults(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
+      if (err instanceof Error && err.name === "AbortError") {
+        setError(
+          "Analysis timed out. Please try again with different constraints.",
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "An error occurred");
+      }
     } finally {
       setLoading(false);
     }
@@ -387,7 +399,7 @@ function App() {
                   )}
                 </Button>
 
-                {error && !error.includes("No feasible design") && (
+                {error && (
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
