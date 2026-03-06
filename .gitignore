@@ -1,0 +1,72 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Django
+*.log
+local_settings.py
+backend/db.sqlite3
+backend/db.sqlite3-journal
+
+# ML Models (keep in version control for deployment)
+# backend/ml_models/*.pkl
+# backend/ml_models/*.joblib
+
+# Training & Data Generation (not needed for production)
+scripts/generate_data.py
+scripts/generate_optimal.py
+scripts/train_ml.py
+scripts/train_inverse_ml.py
+scripts/run_forward_model.py
+scripts/training_data.csv
+scripts/optimal_data.csv
+scripts/mock_inventory.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (for Frontend)
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/*.timestamp-*
+
+# Test files
+test_*.py
+*_test.py
+
+# Coverage
+.coverage
+htmlcov/

@@ -1,0 +1,2 @@
+docs/PDF/l03055d.pdf filter=lfs diff=lfs merge=lfs -text
+backend/ml_models/thermal_model.pkl filter=lfs diff=lfs merge=lfs -text
