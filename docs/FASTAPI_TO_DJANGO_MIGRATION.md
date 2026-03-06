@@ -213,13 +213,11 @@ urlpatterns = [
 
 ### FastAPI (Original)
 ```bash
-cd D:\Akif\Fins
 uvicorn api:app --host 0.0.0.0 --port 8000
 ```
 
 ### Django (New)
 ```bash
-cd D:\Akif\Fins
 python manage.py runserver 8001
 ```
 
