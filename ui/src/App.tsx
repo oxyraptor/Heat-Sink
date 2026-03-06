@@ -22,6 +22,15 @@ import { Slider } from "./components/ui/slider";
 import { Separator } from "./components/ui/separator";
 import { Target, ArrowRight, Sparkles, TrendingUp } from "lucide-react";
 
+const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
+
+const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as
+  | string
+  | undefined;
+const API_BASE_URLS = configuredBaseUrl
+  ? [normalizeBaseUrl(configuredBaseUrl)]
+  : ["http://localhost:8001", "http://127.0.0.1:8001", "http://localhost:8000"];
+
 // Fields to exclude from results display
 const EXCLUDED_FIELDS = [
   "temperature",
@@ -197,13 +206,33 @@ function App() {
         preferred_alloy: null,
       };
 
-      const response = await fetch("http://localhost:8001/recommend/", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        signal: controller.signal,
-      });
+      let response: Response | null = null;
+      let lastFetchError: unknown = null;
+
+      for (const baseUrl of API_BASE_URLS) {
+        try {
+          response = await fetch(`${baseUrl}/recommend/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            signal: controller.signal,
+          });
+          break;
+        } catch (fetchError) {
+          lastFetchError = fetchError;
+          if (fetchError instanceof Error && fetchError.name === "AbortError") {
+            throw fetchError;
+          }
+        }
+      }
+
       window.clearTimeout(timeoutId);
+
+      if (!response) {
+        throw new Error(
+          `Could not reach backend API. Tried: ${API_BASE_URLS.join(", ")}. Error: ${String(lastFetchError)}`,
+        );
+      }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
