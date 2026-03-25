@@ -22,6 +22,9 @@ urlpatterns = [
     
     # ML prediction endpoint
     path('predict-ml/', HeatSinkViewSet.as_view({'post': 'predict_ml'}), name='predict-ml'),
+
+    # CFD closed-loop optimization endpoint
+    path('cfd-optimize/', HeatSinkViewSet.as_view({'post': 'cfd_optimize'}), name='cfd-optimize'),
     
     # Include router URLs (alternative approach)
     # path('', include(router.urls)),

@@ -33,7 +33,7 @@ npm install
 npm run dev
 ```
 
-Frontend runs at: `http://localhost:5174/`
+Frontend runs at: `http://localhost:5173/`
 
 ## 📁 Project Structure
 
@@ -102,12 +102,13 @@ Fins/
 
 ### Base URL: `http://127.0.0.1:8001/`
 
-| Endpoint       | Method | Description            |
-| -------------- | ------ | ---------------------- |
-| `/`            | GET    | API status             |
-| `/materials/`  | GET    | List available alloys  |
-| `/recommend/`  | POST   | Heat sink optimization |
-| `/predict-ml/` | POST   | ML-based prediction    |
+| Endpoint         | Method | Description                     |
+| ---------------- | ------ | ------------------------------- |
+| `/`              | GET    | API status                      |
+| `/materials/`    | GET    | List available alloys           |
+| `/recommend/`    | POST   | Heat sink optimization          |
+| `/predict-ml/`   | POST   | ML-based prediction             |
+| `/cfd-optimize/` | POST   | AI-CFD closed-loop optimization |
 
 ## 📦 Dependencies
 
@@ -166,10 +167,93 @@ python manage.py test
 - ✅ Multiple aluminum alloy support (6063-T5, 6061-T6, 1050A)
 - ✅ ML-based thermal predictions
 - ✅ Real-time optimization with constraint handling
+- ✅ Unified Optimizer with left-side vertical configuration panel
+- ✅ Analysis Results card with fin description fields (including number of fins)
+- ✅ Turbulence separation toggle in Unified Optimizer CFD controls
 - ✅ Modern responsive UI
 - ✅ TypeScript for type safety
 - ✅ RESTful API with Django
 - ✅ CORS enabled for development
+
+## 🔁 AI-CFD Closed-Loop Design Workflow
+
+### Process Overview
+
+1. **AI Tool -> Generates Design (O/P)**
+   - The AI tool creates an initial geometry, parameters, and design.
+   - This is labeled as O/P (output).
+
+2. **Output -> CFD Tool**
+   - The generated design is passed into Computational Fluid Dynamics (CFD).
+   - CFD runs simulation (flow, pressure, drag, heat, etc.).
+
+3. **Validation Step**
+   - Results from CFD are validated against constraints.
+   - Example checks:
+     - Drag < threshold
+     - Pressure drop acceptable
+     - Flow uniformity OK
+     - Temperature within limits
+
+4. **Decision**
+   - **YES -> Accept ✅**
+     - Design meets performance requirements.
+   - **NO -> Redesign Loop 🔁**
+     - Feedback goes back to the AI tool.
+     - AI modifies geometry and resubmits to CFD.
+
+### Current Implementation (March 2026)
+
+- Backend endpoint: `POST /cfd-optimize/`
+- Orchestrator: `backend/core/cfd_closed_loop.py` (`CFDOptimizationAgent`)
+- Unified UI tab: `Unified Optimizer` in `ui/src/components/UnifiedOptimization.tsx`
+
+Unified Optimizer now provides:
+
+- Left vertical Configuration card (motor + CFD parameters)
+- `Allow Turbulence Separation` toggle mapped to `allow_separation`
+- `Analysis Results` card with:
+  - Valid Design
+  - Geometry
+  - Parameters (Number of Fins, Fin Height, Fin Spacing, Geometry Type, Tip Thickness, Taper Angle)
+  - Material Alloy
+
+The Analysis Results section combines CFD optimization output with recommendation
+data from `POST /recommend/` so fin-specific fields (for example Number of Fins)
+are populated when available.
+
+The surrogate model is now motor-aware. It uses motor power, voltage/current,
+max temperature, and motor dimensions (diameter/length) to adjust CFD difficulty.
+Higher motor stress increases pressure drop risk, reduces velocity uniformity,
+and can trigger `thermal_stress_zone` in weak regions.
+
+### Loop Flow
+
+```text
+AI generates design
+        ↓
+CFD simulates physics
+        ↓
+Check performance
+   ↓           ↓
+Accept      Improve
+               ↓
+            AI redesign
+               ↓
+            repeat
+```
+
+### Technical Meaning
+
+- **AI** = design generator / optimizer
+- **CFD** = physics truth engine
+- **Validator** = objective function
+- **Loop** = closed-loop optimization
+
+- AI + simulation optimization
+- Surrogate-based design
+- Generative engineering
+- Autonomous engineering loop
 
 ## 🚢 Production Deployment
 
@@ -194,6 +278,7 @@ npm run build
 - **Migration Guide**: [docs/FASTAPI_TO_DJANGO_MIGRATION.md](docs/FASTAPI_TO_DJANGO_MIGRATION.md)
 - **Code Explanation**: [docs/CODE_EXPLAINED.md](docs/CODE_EXPLAINED.md)
 - **ML Algorithms**: [docs/ML_ALGORITHMS.md](docs/ML_ALGORITHMS.md)
+- **AI-CFD Optimization Agent Spec**: [docs/AI_CFD_OPTIMIZATION_AGENT.md](docs/AI_CFD_OPTIMIZATION_AGENT.md)
 
 ## 🤝 Contributing
 
@@ -205,4 +290,4 @@ Proprietary - Heat Sink Optimization System
 
 ---
 
-**Last Updated**: March 6, 2026
+**Last Updated**: March 25, 2026

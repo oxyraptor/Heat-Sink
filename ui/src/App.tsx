@@ -20,7 +20,15 @@ import {
 } from "./components/ui/select";
 import { Slider } from "./components/ui/slider";
 import { Separator } from "./components/ui/separator";
-import { Target, ArrowRight, Sparkles, TrendingUp } from "lucide-react";
+import {
+  Target,
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  BarChart3,
+} from "lucide-react";
+import { CFDOptimization } from "./components/CFDOptimization";
+import { UnifiedOptimization } from "./components/UnifiedOptimization";
 
 const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
 
@@ -132,7 +140,7 @@ interface ConstraintParams {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState("motor");
+  const [activeTab, setActiveTab] = useState("unified");
   const [motorData, setMotorData] = useState<MotorParams>({
     motor_type: "Servo",
     rated_power: 1000,
@@ -254,8 +262,8 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 sm:p-8 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -273,266 +281,305 @@ function App() {
           </div>
           <p className="text-slate-400">
             Optimize motor cooling fin configurations with AI-powered analysis
+            and CFD feedback
           </p>
         </motion.div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Input Panel */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-1"
-          >
-            <Card className="bg-slate-800 border-slate-700 shadow-2xl">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-white flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5" />
-                  Configuration
-                </CardTitle>
-                <CardDescription className="text-slate-400">
-                  Set your motor and environment parameters
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="power" className="text-slate-300">
-                      Power (W) *
-                    </Label>
-                    <Input
-                      id="power"
-                      type="number"
-                      value={motorData.rated_power}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "rated_power",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="1000"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="voltage" className="text-slate-300">
-                      Voltage (V) *
-                    </Label>
-                    <Input
-                      id="voltage"
-                      type="number"
-                      value={motorData.rated_voltage}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "rated_voltage",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="48"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="current" className="text-slate-300">
-                      Current (A) *
-                    </Label>
-                    <Input
-                      id="current"
-                      type="number"
-                      value={motorData.rated_current}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "rated_current",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="25"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="max-temp" className="text-slate-300">
-                      Max Temp (°C) *
-                    </Label>
-                    <Input
-                      id="max-temp"
-                      type="number"
-                      value={motorData.max_temp}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "max_temp",
-                          parseFloat(e.target.value),
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="100"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="motor-diameter" className="text-slate-300">
-                      Motor Diameter (mm) *
-                    </Label>
-                    <Input
-                      id="motor-diameter"
-                      type="number"
-                      value={motorData.motor_diameter * 1000}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "motor_diameter",
-                          parseFloat(e.target.value) / 1000,
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="50"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="motor-length" className="text-slate-300">
-                      Motor Length (mm) *
-                    </Label>
-                    <Input
-                      id="motor-length"
-                      type="number"
-                      value={motorData.motor_length * 1000}
-                      onChange={(e) =>
-                        handleMotorChange(
-                          "motor_length",
-                          parseFloat(e.target.value) / 1000,
-                        )
-                      }
-                      className="bg-slate-700 border-slate-600 text-white"
-                      placeholder="100"
-                    />
-                  </div>
-                </div>
+        {/* Tabs Navigation */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-8">
+          <TabsList className="bg-slate-800 border border-slate-700">
+            <TabsTrigger value="unified" className="gap-2">
+              <Sparkles className="w-4 h-4" />
+              Unified Optimizer
+            </TabsTrigger>
+            <TabsTrigger value="motor" className="gap-2">
+              <Target className="w-4 h-4" />
+              Heat Sink Optimizer
+            </TabsTrigger>
+            <TabsTrigger value="cfd" className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              CFD Optimization
+            </TabsTrigger>
+          </TabsList>
 
-                <Separator className="bg-slate-700" />
+          {/* Unified Optimization Tab */}
+          <TabsContent value="unified">
+            <UnifiedOptimization apiBaseUrls={API_BASE_URLS} />
+          </TabsContent>
 
-                <Button
-                  onClick={handleAnalyze}
-                  disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                  size="lg"
-                >
-                  {loading ? (
-                    <>
-                      <div className="animate-spin">⚙️</div>
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      Analyze Design
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </Button>
+          {/* Heat Sink Optimization Tab */}
+          <TabsContent value="motor">
+            {/* Main Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Input Panel */}
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.1 }}
+                className="lg:col-span-1"
+              >
+                <Card className="bg-slate-800 border-slate-700 shadow-2xl">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5" />
+                      Configuration
+                    </CardTitle>
+                    <CardDescription className="text-slate-400">
+                      Set your motor and environment parameters
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="power" className="text-slate-300">
+                          Power (W) *
+                        </Label>
+                        <Input
+                          id="power"
+                          type="number"
+                          value={motorData.rated_power}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "rated_power",
+                              parseFloat(e.target.value),
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="1000"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="voltage" className="text-slate-300">
+                          Voltage (V) *
+                        </Label>
+                        <Input
+                          id="voltage"
+                          type="number"
+                          value={motorData.rated_voltage}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "rated_voltage",
+                              parseFloat(e.target.value),
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="48"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="current" className="text-slate-300">
+                          Current (A) *
+                        </Label>
+                        <Input
+                          id="current"
+                          type="number"
+                          value={motorData.rated_current}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "rated_current",
+                              parseFloat(e.target.value),
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="25"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="max-temp" className="text-slate-300">
+                          Max Temp (°C) *
+                        </Label>
+                        <Input
+                          id="max-temp"
+                          type="number"
+                          value={motorData.max_temp}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "max_temp",
+                              parseFloat(e.target.value),
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="100"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="motor-diameter"
+                          className="text-slate-300"
+                        >
+                          Motor Diameter (mm) *
+                        </Label>
+                        <Input
+                          id="motor-diameter"
+                          type="number"
+                          value={motorData.motor_diameter * 1000}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "motor_diameter",
+                              parseFloat(e.target.value) / 1000,
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="50"
+                        />
+                      </div>
+                      <div>
+                        <Label
+                          htmlFor="motor-length"
+                          className="text-slate-300"
+                        >
+                          Motor Length (mm) *
+                        </Label>
+                        <Input
+                          id="motor-length"
+                          type="number"
+                          value={motorData.motor_length * 1000}
+                          onChange={(e) =>
+                            handleMotorChange(
+                              "motor_length",
+                              parseFloat(e.target.value) / 1000,
+                            )
+                          }
+                          className="bg-slate-700 border-slate-600 text-white"
+                          placeholder="100"
+                        />
+                      </div>
+                    </div>
 
-                {error && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="p-3 bg-red-900/30 border border-red-700 rounded text-red-200 text-sm"
-                  >
-                    {error}
-                  </motion.div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                    <Separator className="bg-slate-700" />
 
-          {/* Results Panel */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:col-span-2"
-          >
-            <AnimatePresence>
-              {results ? (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.3 }}
-                  className="space-y-4"
-                >
-                  <Card className="bg-slate-800 border-slate-700 shadow-2xl">
-                    <CardHeader>
-                      <CardTitle className="text-white flex items-center gap-2">
-                        <Target className="w-5 h-5" />
-                        Analysis Results
-                      </CardTitle>
-                      <CardDescription className="text-slate-400">
-                        Recommended fin configurations based on your parameters
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-4">
-                        {Object.entries(filterResults(results)).map(
-                          ([key, value]: [string, any], idx) => (
-                            <motion.div
-                              key={key}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: idx * 0.1 }}
-                              className="p-4 bg-slate-700 rounded-lg border border-slate-600"
-                            >
-                              <h3 className="font-semibold text-white mb-2 capitalize">
-                                {formatFieldName(key)}
-                              </h3>
-                              <div className="space-y-2">
-                                {typeof value === "object" ? (
-                                  Object.entries(value).map(([k, v]) => (
-                                    <div
-                                      key={k}
-                                      className="flex justify-between text-sm"
-                                    >
-                                      <span className="text-slate-400">
-                                        {formatFieldName(k)}:
-                                      </span>
-                                      <span className="text-white font-medium">
-                                        {formatValue(k, v)}
-                                      </span>
-                                    </div>
-                                  ))
-                                ) : (
-                                  <div className="text-slate-300">
-                                    {formatValue(key, value)}
+                    <Button
+                      onClick={handleAnalyze}
+                      disabled={loading}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                      size="lg"
+                    >
+                      {loading ? (
+                        <>
+                          <div className="animate-spin">⚙️</div>
+                          Analyzing...
+                        </>
+                      ) : (
+                        <>
+                          Analyze Design
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </Button>
+
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="p-3 bg-red-900/30 border border-red-700 rounded text-red-200 text-sm"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Results Panel */}
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="lg:col-span-2"
+              >
+                <AnimatePresence>
+                  {results ? (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.95 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-4"
+                    >
+                      <Card className="bg-slate-800 border-slate-700 shadow-2xl">
+                        <CardHeader>
+                          <CardTitle className="text-white flex items-center gap-2">
+                            <Target className="w-5 h-5" />
+                            Analysis Results
+                          </CardTitle>
+                          <CardDescription className="text-slate-400">
+                            Recommended fin configurations based on your
+                            parameters
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-4">
+                            {Object.entries(filterResults(results)).map(
+                              ([key, value]: [string, any], idx) => (
+                                <motion.div
+                                  key={key}
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  transition={{ delay: idx * 0.1 }}
+                                  className="p-4 bg-slate-700 rounded-lg border border-slate-600"
+                                >
+                                  <h3 className="font-semibold text-white mb-2 capitalize">
+                                    {formatFieldName(key)}
+                                  </h3>
+                                  <div className="space-y-2">
+                                    {typeof value === "object" ? (
+                                      Object.entries(value).map(([k, v]) => (
+                                        <div
+                                          key={k}
+                                          className="flex justify-between text-sm"
+                                        >
+                                          <span className="text-slate-400">
+                                            {formatFieldName(k)}:
+                                          </span>
+                                          <span className="text-white font-medium">
+                                            {formatValue(k, v)}
+                                          </span>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <div className="text-slate-300">
+                                        {formatValue(key, value)}
+                                      </div>
+                                    )}
                                   </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          ),
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="h-full flex items-center justify-center"
-                >
-                  <Card className="bg-slate-800 border-slate-700 shadow-2xl w-full">
-                    <CardContent className="p-12 text-center">
-                      <div className="text-slate-500 space-y-3">
-                        <Sparkles className="w-16 h-16 mx-auto opacity-20" />
-                        <p className="text-lg">
-                          Configure your motor parameters and click "Analyze
-                          Design"
-                        </p>
-                        <p className="text-sm">Results will appear here</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
-        </div>
+                                </motion.div>
+                              ),
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="h-full flex items-center justify-center"
+                    >
+                      <Card className="bg-slate-800 border-slate-700 shadow-2xl w-full">
+                        <CardContent className="p-12 text-center">
+                          <div className="text-slate-500 space-y-3">
+                            <Sparkles className="w-16 h-16 mx-auto opacity-20" />
+                            <p className="text-lg">
+                              Configure your motor parameters and click "Analyze
+                              Design"
+                            </p>
+                            <p className="text-sm">Results will appear here</p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            </div>
+          </TabsContent>
+
+          {/* CFD Optimization Tab */}
+          <TabsContent value="cfd">
+            <CFDOptimization apiBaseUrls={API_BASE_URLS} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
