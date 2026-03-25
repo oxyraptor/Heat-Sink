@@ -1,196 +1,87 @@
-# Project Structure - Quick Reference
+# Project Structure
 
 ## Overview
 
-The project has been reorganized into a clean, professional structure:
+Current top-level layout:
 
-```
+```text
 Fins/
-├── backend/          # All Django/Python code
-├── frontend/         # All React/TypeScript code
-├── docs/             # All documentation
-├── scripts/          # Utility scripts
-├── setup.py          # One-command setup
-└── README.md         # Main documentation
+|- backend/      # Django backend, APIs, test runners, CLI tools
+|- docs/         # Documentation index and technical references
+|- ui/           # React + TypeScript frontend
+|- scripts/      # Utility scripts
+|- setup.py      # Initial setup helper
+|- README.md     # Main project guide
+`- IMPLEMENTATION_SUMMARY.md
 ```
 
-##  Detailed Structure
+## Backend
 
-### Backend (`backend/`)
-```
+```text
 backend/
-├── core/                       # Business Logic
-│   ├── optimizer.py            # Heat sink optimization
-│   ├── materials.py            # Material properties
-│   └── __init__.py
-│
-├── ml_models/                  # ML Models
-│   ├── thermal_model.pkl
-│   └── inverse_model.pkl
-│
-├── fins_project/               # Django Project
-│   ├── settings.py             # ← Updated with sys.path
-│   ├── urls.py
-│   ├── wsgi.py
-│   └── asgi.py
-│
-├── fins_api/                   # Django App
-│   ├── views.py                # ← Updated imports
-│   ├── serializers.py
-│   ├── urls.py
-│   └── tests.py
-│
-├── manage.py
-├── start_django.py             # Dev server
-├── start_production.py         # Production server
-├── requirements_django.txt
-└── db.sqlite3
+|- core/                         # Optimization, materials, logging, CFD loop
+|- fins_api/                     # Django REST API app
+|- fins_project/                 # Django project settings and routing
+|- ml_models/                    # Trained model artifacts
+|- tests/                        # Python tests
+|- manage.py
+|- start_django.py
+|- start_production.py
+|- requirements_django.txt
+|- fins_cli.py                   # Interactive management console
+|- verify_and_test_system.py     # Full suite + health checks
+|- verify_api_backend.py         # API/backend verification only
+|- interactive_full_test_cli.py  # Interactive full-system test runner
+`- interactive_api_test_cli.py   # Interactive API/custom payload test runner
 ```
 
-### Frontend (`frontend/`)
-```
-frontend/
-├── src/
-│   ├── App.tsx                 # Main component
-│   ├── main.tsx                # Entry point
-│   ├── components/             # UI components
-│   │   └── ui/                 # shadcn-ui
-│   └── lib/
-│       └── utils.ts
-│
-├── public/
-├── package.json
-├── vite.config.ts
-├── tailwind.config.ts
-└── tsconfig.json
-```
+## Documentation
 
-### Documentation (`docs/`)
-```
+```text
 docs/
-├── CODE_EXPLAINED.md
-├── ML_ALGORITHMS.md
-├── README_DJANGO.md
-├── FASTAPI_TO_DJANGO_MIGRATION.md
-└── PDF/
+|- README.md                     # Documentation index (entry point)
+|- API_REFERENCE_DETAILED.md
+|- MATERIALS_DATABASE.md
+|- AI_CFD_OPTIMIZATION_AGENT.md
+|- CODE_EXPLAINED.md
+|- ML_ALGORITHMS.md
+|- README_DJANGO.md
+`- PDF/
 ```
 
-### Scripts (`scripts/`)
-```
-scripts/
-└── Scraper/
-    ├── scraper.py
-    └── servo_motor_specs.csv
-```
+## Frontend
 
-## 🔧 Code Changes Made
-
-### 1. Updated `backend/fins_api/views.py`
-```python
-# OLD
-from materials import list_materials
-from optimizer import DesignOptimizer
-ml_model = joblib.load("thermal_model.pkl")
-
-# NEW
-from core.materials import list_materials
-from core.optimizer import DesignOptimizer
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ML_MODELS_DIR = os.path.join(BASE_DIR, 'ml_models')
-ml_model = joblib.load(os.path.join(ML_MODELS_DIR, "thermal_model.pkl"))
+```text
+ui/
+|- src/
+|- public/
+|- package.json
+|- vite.config.ts
+|- tailwind.config.ts
+`- tsconfig.json
 ```
 
-### 2. Updated `backend/fins_project/settings.py`
-```python
-# Added sys.path configuration
-import sys
-sys.path.insert(0, str(BASE_DIR))
-```
-##  Running the Application
+## Test Entry Points
 
-### Quick Setup (First Time)
-```bash
-python setup.py
-```
+Use these four scripts as the maintained testing surface:
 
-### Development Mode
-```bash
-# Terminal 1 - 
-python start_django.py
+1. `python backend/verify_and_test_system.py`
+2. `python backend/verify_api_backend.py`
+3. `python backend/interactive_full_test_cli.py`
+4. `python backend/interactive_api_test_cli.py`
 
-# Terminal 2 - Frontend
-npm run dev
-```
+## Recommended Run Flow
 
-### Production Mode
-```bash
-# Backend
-pip install gunicorn
-python start_production.py
+1. Start backend: `python backend/start_django.py`
+2. Quick validation: `python backend/verify_and_test_system.py --quick`
+3. API-only validation: `python backend/verify_api_backend.py`
+4. Full verification before push: `python backend/verify_and_test_system.py`
 
-# Frontend
-npm run build
-```
+## Notes
 
-## Important Paths
-
-| Old Path | New Path |
-|----------|----------|
-| `optimizer.py` | `backend/core/optimizer.py` |
-| `materials.py` | `backend/core/materials.py` |
-| `thermal_model.pkl` | `backend/ml_models/thermal_model.pkl` |
-| `inverse_model.pkl` | `backend/ml_models/inverse_model.pkl` |
-| `manage.py` | `backend/manage.py` |
-| `fins_project/` | `backend/fins_project/` |
-| `fins_api/` | `backend/fins_api/` |
-| `ui/` | `frontend/` |
-| `CODE_EXPLAINED.md` | `docs/CODE_EXPLAINED.md` |
-| `Scraper/` | `scripts/Scraper/` |
-
-## Benefits of New Structure
-
-1. **Clear Separation**: Backend, frontend, docs, and scripts are clearly separated
-2. **Professional**: Follows industry-standard project layout
-3. **Scalable**: Easy to add new modules or features
-4. **Maintainable**: Easier to navigate and understand
-5. **Deployable**: Backend and frontend can be deployed independently
-
-## 🔍 Finding Files
-
-### Backend Code
-```bash
-cd backend
-# Business logic: core/
-# API code: fins_api/
-# ML models: ml_models/
-# Config: fins_project/
-```
-
-### Frontend Code
-```bash
-cd frontend
-# Components: src/components/
-# Main app: src/App.tsx
-# Config: vite.config.ts, tailwind.config.ts
-```
-
-### Documentation
-```bash
-cd docs
-# All markdown files and PDFs here
-```
-
-## 🆘 Troubleshooting
-
-### Import Error: `No module named 'core'`
-**Solution**: Make sure you're running from the `backend/` directory and that `settings.py` has the sys.path modification.
-
-### Frontend not connecting to backend
-**Solution**: Check that backend is running on port 8001 and update frontend API base URL if needed.
-
-### ML Models not loading
-**Solution**: Ensure `thermal_model.pkl` and `inverse_model.pkl` are in `backend/ml_models/` directory.
+- Legacy PowerShell and wrapper test scripts were removed to avoid duplicate paths.
+- `docs/README.md` is the single documentation navigation entry point.
 
 ---
 
-**Last Updated**: March 6, 2026
+Last updated: March 25, 2026

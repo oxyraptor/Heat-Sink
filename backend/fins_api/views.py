@@ -7,6 +7,9 @@ import joblib
 import pandas as pd
 import numpy as np
 from rest_framework import viewsets, status
+import json
+import traceback
+from core.logger import get_api_logger
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -36,14 +39,16 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 ML_MODELS_DIR = os.path.join(BASE_DIR, 'ml_models')
 
 # Load ML Models
+logger = get_api_logger()
+
 try:
     ml_model = joblib.load(os.path.join(ML_MODELS_DIR, "thermal_model.pkl"))
     inverse_model = joblib.load(os.path.join(ML_MODELS_DIR, "inverse_model.pkl"))
-    print("ML Models loaded successfully.")
+    logger.success("ML Models loaded into memory successfully")
 except Exception as e:
     ml_model = None
     inverse_model = None
-    print(f"Warning: ML Models not found. {e}")
+    logger.warning(f"ML Models not available", exception=e)
 
 
 class HeatSinkViewSet(viewsets.ViewSet):
