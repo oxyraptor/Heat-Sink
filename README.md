@@ -222,6 +222,12 @@ The Analysis Results section combines CFD optimization output with recommendatio
 data from `POST /recommend/` so fin-specific fields (for example Number of Fins)
 are populated when available.
 
+Number of Fins rendering behavior:
+
+- Primary source: `POST /recommend/` response (`parameters.n`)
+- Fallback source: CFD optimization summary when compatible fin metadata is present
+- Final fallback: displays `N/A` only if neither response contains fin-count metadata
+
 The surrogate model is now motor-aware. It uses motor power, voltage/current,
 max temperature, and motor dimensions (diameter/length) to adjust CFD difficulty.
 Higher motor stress increases pressure drop risk, reduces velocity uniformity,
