@@ -21,6 +21,14 @@ from .serializers import (
 )
 from core.materials import list_materials, get_material_properties
 from core.optimizer import DesignOptimizer
+from core.cfd_closed_loop import (
+    CFDOptimizationAgent,
+    OptimizationConfig,
+    ValidationCriteria,
+    DesignIO,
+)
+from pathlib import Path
+import tempfile
 
 
 # Get base directory
@@ -181,6 +189,81 @@ class HeatSinkViewSet(viewsets.ViewSet):
             return Response(result, status=status.HTTP_200_OK)
 
         except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=False, methods=['post'], url_path='cfd-optimize')
+    def cfd_optimize(self, request):
+        """
+        AI-CFD closed-loop optimization endpoint.
+        POST /cfd-optimize
+        """
+        try:
+            # Extract parameters
+            drag_max = float(request.data.get('drag_max', 0.17))
+            pressure_drop_max = float(request.data.get('pressure_drop_max', 130))
+            velocity_uniformity_min = float(request.data.get('velocity_uniformity_min', 0.84))
+            inlet_velocity = float(request.data.get('inlet_velocity', 14.0))
+            max_iterations = int(request.data.get('max_iterations', 20))
+            allow_separation = bool(request.data.get('allow_separation', False))
+            motor = request.data.get('motor', {}) or {}
+
+            # Create temporary input design file
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                import json
+                json.dump({
+                    "parameters": DesignIO.default_parameters(),
+                    "metadata": {"source": "api"}
+                }, f)
+                input_file = Path(f.name)
+
+            # Create temporary output directory
+            with tempfile.TemporaryDirectory() as tmpdir:
+                output_dir = Path(tmpdir)
+
+                # Configure optimization
+                validation = ValidationCriteria(
+                    drag_coefficient_max=drag_max,
+                    pressure_drop_max=pressure_drop_max,
+                    velocity_uniformity_min=velocity_uniformity_min,
+                    no_turbulence_separation=(not allow_separation),
+                )
+
+                config = OptimizationConfig(
+                    input_file=input_file,
+                    file_type='json',
+                    cfd_tool='surrogate',
+                    simulation_type='steady-state',
+                    fluid='air',
+                    boundary_conditions={
+                        'inlet_velocity': inlet_velocity,
+                        'outlet_pressure': 0.0,
+                        'ambient_temp': 25.0,
+                    },
+                    motor_specs=motor,
+                    validation=validation,
+                    max_iterations=max_iterations,
+                    output_dir=output_dir,
+                    learning_rate=0.15,
+                )
+
+                # Run optimization
+                agent = CFDOptimizationAgent(config=config)
+                result = agent.run()
+
+                # Read final design file
+                final_design_file = output_dir / 'optimized_design.json'
+                if final_design_file.exists():
+                    with open(final_design_file, 'r') as f:
+                        result['final_design'] = json.load(f)
+
+                return Response(result, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR

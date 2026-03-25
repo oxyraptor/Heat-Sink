@@ -104,3 +104,6 @@ backend/test-results/
 backend/tmp/
 tmp/
 temp/
+
+# Local ad-hoc test runner scripts (generated during manual API testing)
+backend/run_*cases*.ps1

@@ -1,5 +1,35 @@
 # Test Suite Documentation
 
+## AI-CFD Closed-Loop Context
+
+This test suite supports an AI + CFD style optimization loop:
+
+1. AI generates design candidates.
+2. Physics behavior is evaluated (directly or via modeled/surrogate behavior).
+3. Results are validated against constraints.
+4. Designs are accepted or sent back for improvement.
+
+Validation intent in this project includes checks such as:
+
+- Drag-related performance thresholds
+- Pressure drop acceptability
+- Flow behavior consistency
+- Thermal limits (temperature constraints)
+
+```text
+AI generates design
+  ↓
+CFD simulates physics
+  ↓
+Check performance
+   ↓           ↓
+ Accept      Improve
+    ↓
+       AI redesign
+    ↓
+       repeat
+```
+
 ## Structure
 
 ```
@@ -8,6 +38,7 @@ tests/
 ├── README.md                   # This file
 ├── unit/                       # Unit tests for individual components
 │   ├── __init__.py
+│   ├── test_cfd_closed_loop.py  # Closed-loop CFD + motor stress tests
 │   ├── test_ml_model.py       # ML model functionality tests
 │   └── test_optimizer_geometry.py  # Optimizer geometry selection tests
 ├── integration/                # Integration tests for API endpoints
@@ -85,6 +116,12 @@ pytest tests/ -s
 - Tests geometry selection for different motor scenarios
 - Verifies optimizer recommends appropriate geometries
 - Validates temperature constraints
+
+#### `test_cfd_closed_loop.py`
+
+- Tests PASS path for the CFD closed-loop optimizer
+- Tests MAX_ITERATIONS_REACHED behavior for strict constraints
+- Tests motor-stress coupling (high-stress motors worsen CFD metrics)
 
 ### Integration Tests
 
