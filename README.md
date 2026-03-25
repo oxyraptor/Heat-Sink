@@ -35,6 +35,19 @@ npm run dev
 
 Frontend runs at: `http://localhost:5173/`
 
+## 📚 Documentation Hub
+
+Use these links to jump directly to the exact documentation you need:
+
+- **Documentation Index (Recommended Start)**: [docs/README.md](docs/README.md)
+- **Quick Start Guide**: [backend/QUICKSTART.py](backend/QUICKSTART.py)
+- **Backend Overview**: [backend/README_BACKEND.md](backend/README_BACKEND.md)
+- **Testing Guide**: [backend/TESTING_GUIDE.md](backend/TESTING_GUIDE.md)
+- **Detailed API Reference**: [docs/API_REFERENCE_DETAILED.md](docs/API_REFERENCE_DETAILED.md)
+- **Materials Database**: [docs/MATERIALS_DATABASE.md](docs/MATERIALS_DATABASE.md)
+- **AI-CFD Optimization Spec**: [docs/AI_CFD_OPTIMIZATION_AGENT.md](docs/AI_CFD_OPTIMIZATION_AGENT.md)
+- **Implementation Summary**: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
+
 ## 📁 Project Structure
 
 ```
@@ -43,6 +56,8 @@ Fins/
 │   ├── core/                   # Business Logic
 │   │   ├── optimizer.py        # Heat sink optimization algorithms
 │   │   ├── materials.py        # Material properties database
+│   │   ├── cfd_closed_loop.py  # AI-CFD closed-loop optimization agent
+│   │   ├── logger.py           # Human-readable logging utility
 │   │   └── __init__.py
 │   │
 │   ├── ml_models/              # Machine Learning Models
@@ -65,10 +80,18 @@ Fins/
 │   ├── manage.py               # Django CLI
 │   ├── start_django.py         # Development server launcher
 │   ├── start_production.py     # Production server launcher
+│   ├── verify_and_test_system.py # Unified health checks + API/integration tests
+│   ├── verify_api_backend.py   # Backend/API verification tests only
+│   ├── interactive_full_test_cli.py # Interactive full-system test CLI
+│   ├── interactive_api_test_cli.py # Interactive API/custom payload test CLI
+│   ├── fins_cli.py             # Interactive management CLI (menu driven)
+│   ├── TESTING_GUIDE.md        # Backend test execution and troubleshooting guide
+│   ├── README_BACKEND.md       # Backend-specific quick reference
+│   ├── QUICKSTART.py           # Fast startup and command reference
 │   ├── requirements_django.txt # Python dependencies
 │   └── db.sqlite3              # SQLite database
 │
-├── 📂 frontend/                # React + TypeScript Frontend
+├── 📂 ui/                      # React + TypeScript Frontend
 │   ├── src/
 │   │   ├── App.tsx             # Main application component
 │   │   ├── main.tsx            # Entry point
@@ -85,10 +108,12 @@ Fins/
 │   └── index.html              # HTML entry point
 │
 ├── 📂 docs/                    # Documentation
+│   ├── API_REFERENCE_DETAILED.md # Full endpoint docs with payloads and examples
+│   ├── MATERIALS_DATABASE.md   # Detailed alloy/material reference
 │   ├── CODE_EXPLAINED.md       # Code explanation
 │   ├── ML_ALGORITHMS.md        # ML algorithms documentation
 │   ├── README_DJANGO.md        # Django-specific docs
-│   ├── FASTAPI_TO_DJANGO_MIGRATION.md  # Migration guide
+│   ├── AI_CFD_OPTIMIZATION_AGENT.md # Closed-loop CFD workflow spec
 │   └── PDF/                    # Additional PDF documentation
 │
 ├── 📂 scripts/                 # Utility Scripts
@@ -100,15 +125,17 @@ Fins/
 
 ## 🔌 API Endpoints
 
-### Base URL: `http://127.0.0.1:8001/`
+### Base URL: `http://127.0.0.1:8001/api`
 
-| Endpoint         | Method | Description                     |
-| ---------------- | ------ | ------------------------------- |
-| `/`              | GET    | API status                      |
-| `/materials/`    | GET    | List available alloys           |
-| `/recommend/`    | POST   | Heat sink optimization          |
-| `/predict-ml/`   | POST   | ML-based prediction             |
-| `/cfd-optimize/` | POST   | AI-CFD closed-loop optimization |
+| Endpoint             | Method | Description                     |
+| -------------------- | ------ | ------------------------------- |
+| `/api/`              | GET    | API status                      |
+| `/api/materials/`    | GET    | List available alloys           |
+| `/api/recommend/`    | POST   | Heat sink optimization          |
+| `/api/predict-ml/`   | POST   | ML-based prediction             |
+| `/api/cfd-optimize/` | POST   | AI-CFD closed-loop optimization |
+
+For required payloads, parameter constraints, and expected response formats, see [docs/API_REFERENCE_DETAILED.md](docs/API_REFERENCE_DETAILED.md).
 
 ## 📦 Dependencies
 
@@ -128,7 +155,7 @@ pip install -r requirements_django.txt
 ### Frontend
 
 ```bash
-cd frontend
+cd ui
 npm install
 ```
 
@@ -150,7 +177,7 @@ python manage.py runserver 8001
 ### Run Frontend
 
 ```bash
-cd frontend
+cd ui
 npm run dev
 ```
 
@@ -158,7 +185,24 @@ npm run dev
 
 ```bash
 cd backend
-python manage.py test
+python verify_and_test_system.py --quick
+```
+
+Additional test modes:
+
+```bash
+cd backend
+python verify_api_backend.py
+python interactive_full_test_cli.py
+python interactive_api_test_cli.py
+python verify_and_test_system.py
+```
+
+Interactive option:
+
+```bash
+cd backend
+python fins_cli.py
 ```
 
 ## 🎯 Features
@@ -174,6 +218,9 @@ python manage.py test
 - ✅ TypeScript for type safety
 - ✅ RESTful API with Django
 - ✅ CORS enabled for development
+- ✅ Human-readable logging for API and Django operations
+- ✅ Four focused test entry scripts (full, API verify, interactive full, interactive API)
+- ✅ Interactive backend CLI with menu-first workflow
 
 ## 🔁 AI-CFD Closed-Loop Design Workflow
 
@@ -274,17 +321,22 @@ gunicorn fins_project.wsgi:application --bind 0.0.0.0:8000
 ### Frontend (Build)
 
 ```bash
-cd frontend
+cd ui
 npm run build
 ```
 
 ## 📖 Documentation
 
+- **Documentation Hub (Start Here)**: [backend/README_BACKEND.md](backend/README_BACKEND.md)
+- **Testing Guide**: [backend/TESTING_GUIDE.md](backend/TESTING_GUIDE.md)
+- **Quick Start**: [backend/QUICKSTART.py](backend/QUICKSTART.py)
+- **Detailed API Reference**: [docs/API_REFERENCE_DETAILED.md](docs/API_REFERENCE_DETAILED.md)
+- **Materials Database**: [docs/MATERIALS_DATABASE.md](docs/MATERIALS_DATABASE.md)
 - **Django Documentation**: [docs/README_DJANGO.md](docs/README_DJANGO.md)
-- **Migration Guide**: [docs/FASTAPI_TO_DJANGO_MIGRATION.md](docs/FASTAPI_TO_DJANGO_MIGRATION.md)
 - **Code Explanation**: [docs/CODE_EXPLAINED.md](docs/CODE_EXPLAINED.md)
 - **ML Algorithms**: [docs/ML_ALGORITHMS.md](docs/ML_ALGORITHMS.md)
 - **AI-CFD Optimization Agent Spec**: [docs/AI_CFD_OPTIMIZATION_AGENT.md](docs/AI_CFD_OPTIMIZATION_AGENT.md)
+- **Implementation Summary**: [IMPLEMENTATION_SUMMARY.md](IMPLEMENTATION_SUMMARY.md)
 
 ## 🤝 Contributing
 
