@@ -4,7 +4,7 @@ URL configuration for fins_api.
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import HeatSinkViewSet, StatusView, MaterialsView
+from .views import HeatSinkViewSet, StatusView, MaterialsView, HealthCheckView
 
 # Create router for ViewSet
 router = DefaultRouter()
@@ -13,6 +13,9 @@ router.register(r'api', HeatSinkViewSet, basename='heatsink')
 urlpatterns = [
     # Root status endpoint
     path('', StatusView.as_view(), name='status'),
+
+    # Health check endpoint for hosting probes
+    path('health/', HealthCheckView.as_view(), name='health-check'),
     
     # Materials endpoint
     path('materials/', MaterialsView.as_view(), name='materials'),
