@@ -304,3 +304,11 @@ class MaterialsView(APIView):
         data = {"alloys": list_materials()}
         serializer = MaterialListResponseSerializer(data)
         return Response(serializer.data)
+
+
+class HealthCheckView(APIView):
+    """
+    Lightweight health check endpoint for hosting platform probes.
+    """
+    def get(self, request):
+        return Response({"status": "ok"}, status=status.HTTP_200_OK)
