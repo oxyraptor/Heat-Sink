@@ -5,6 +5,21 @@ Django settings for fins_project.
 import os
 import sys
 from pathlib import Path
+from typing import List, Optional
+
+
+def _get_bool_env(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _get_list_env(name: str, default: Optional[List[str]] = None) -> List[str]:
+    value = os.getenv(name)
+    if value is None:
+        return default or []
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -16,12 +31,15 @@ sys.path.insert(0, str(BASE_DIR))
 DB_PATH = BASE_DIR / 'db.sqlite3'
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-fins-heat-sink-optimization-dev-key-change-in-production'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-fins-heat-sink-optimization-dev-key-change-in-production'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = _get_bool_env('DEBUG', True)
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = _get_list_env('ALLOWED_HOSTS', ['*'])
 
 # Application definition
 INSTALLED_APPS = [
@@ -99,6 +117,7 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -115,7 +134,6 @@ REST_FRAMEWORK = {
 }
 
 # CORS Configuration
-CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -136,3 +154,11 @@ CORS_ALLOW_HEADERS = [
     'x-csrftoken',
     'x-requested-with',
 ]
+
+_cors_allowed_origins = _get_list_env('CORS_ALLOWED_ORIGINS')
+if _cors_allowed_origins:
+    CORS_ALLOW_ALL_ORIGINS = False
+    CORS_ALLOWED_ORIGINS = _cors_allowed_origins
+else:
+    CORS_ALLOW_ALL_ORIGINS = DEBUG
+    CORS_ALLOWED_ORIGINS = []

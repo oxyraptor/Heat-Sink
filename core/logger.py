@@ -91,14 +91,14 @@ class FinsLogger:
         """Log success message (green)"""
         if kwargs:
             message = self._format_kwargs(message, kwargs)
-        formatted = self._format_message("✓ SUCCESS", message, ColorCodes.GREEN)
+        formatted = self._format_message("[OK] SUCCESS", message, ColorCodes.GREEN)
         self._write_log(formatted)
     
     def warning(self, message: str, **kwargs):
         """Log warning level message"""
         if kwargs:
             message = self._format_kwargs(message, kwargs)
-        formatted = self._format_message("⚠ WARNING", message, ColorCodes.YELLOW)
+        formatted = self._format_message("[!] WARNING", message, ColorCodes.YELLOW)
         self._write_log(formatted)
     
     def error(self, message: str, exception: Optional[Exception] = None, **kwargs):
@@ -107,7 +107,7 @@ class FinsLogger:
             message = self._format_kwargs(message, kwargs)
         if exception:
             message += f"\n{self._indent()}  Exception: {type(exception).__name__}: {str(exception)}"
-        formatted = self._format_message("✗ ERROR", message, ColorCodes.RED)
+        formatted = self._format_message("[XX] ERROR", message, ColorCodes.RED)
         self._write_log(formatted)
     
     def debug(self, message: str, **kwargs):
@@ -174,13 +174,13 @@ class FinsLogger:
         # Determine color based on status
         if status == "failed":
             color = ColorCodes.RED
-            symbol = "✗"
+            symbol = "[XX]"
         elif status == "skipped":
             color = ColorCodes.YELLOW
-            symbol = "⊘"
+            symbol = "[--]"
         else:
             color = ColorCodes.GREEN
-            symbol = "✓"
+            symbol = "[OK]"
         
         message = f"{symbol} {operation_name} {status} ({duration_str})"
         formatted = self._format_message("END", message, color)

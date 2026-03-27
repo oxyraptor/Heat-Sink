@@ -2,23 +2,18 @@
 URL configuration for fins_api.
 """
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import HeatSinkViewSet, StatusView, MaterialsView, HealthCheckView
-
-# Create router for ViewSet
-router = DefaultRouter()
-router.register(r'api', HeatSinkViewSet, basename='heatsink')
+from django.urls import path
+from .views import HeatSinkViewSet, HealthCheckView
 
 urlpatterns = [
     # Root status endpoint
-    path('', StatusView.as_view(), name='status'),
+    path('', HeatSinkViewSet.as_view({'get': 'status'}), name='status'),
 
     # Health check endpoint for hosting probes
     path('health/', HealthCheckView.as_view(), name='health-check'),
     
     # Materials endpoint
-    path('materials/', MaterialsView.as_view(), name='materials'),
+    path('materials/', HeatSinkViewSet.as_view({'get': 'materials'}), name='materials'),
     
     # Recommendation endpoint
     path('recommend/', HeatSinkViewSet.as_view({'post': 'recommend'}), name='recommend'),
@@ -28,7 +23,4 @@ urlpatterns = [
 
     # CFD closed-loop optimization endpoint
     path('cfd-optimize/', HeatSinkViewSet.as_view({'post': 'cfd_optimize'}), name='cfd-optimize'),
-    
-    # Include router URLs (alternative approach)
-    # path('', include(router.urls)),
 ]

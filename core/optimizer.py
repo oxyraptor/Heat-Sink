@@ -1,10 +1,16 @@
 
 import numpy as np
+import os
 from scipy.optimize import differential_evolution, root_scalar
 from scipy.special import i0, i1
 from core.materials import ALUMINUM_ALLOYS
 import math
 from abc import ABC, abstractmethod
+
+
+MIN_FIN_SPACING_M = 0.0002
+MIN_FIN_COUNT = 10
+HIGH_POWER_TRAPEZOIDAL_THRESHOLD_W = 800.0
 
 # --- 1. Temperature-Dependent Air Properties ---
 class AirProperties:
@@ -63,7 +69,8 @@ class FinGeometry(ABC):
             
     def is_valid(self):
         # Physical constraints
-        if self.s < 0.0005: return False # Min 0.5mm
+        if self.N < MIN_FIN_COUNT: return False
+        if self.s < MIN_FIN_SPACING_M: return False
         if self.t_base < 0.0005: return False
         if self.H < 0.01: return False
         return True
@@ -126,9 +133,16 @@ class TriangularFin(FinGeometry):
         return {'type': 'Triangular', 't_tip': 0.0, 'taper_angle': angle}
 
 class TrapezoidalFin(FinGeometry):
-    def __init__(self, N, H, t_base, length, width):
+    def __init__(self, N, H, t_base, length, width, motor_power=1000):
         super().__init__(N, H, t_base, length, width)
-        self.t_tip = 0.5 * t_base # Fixed ratio
+        # Adaptive taper ratio based on motor power (heat load)
+        if motor_power < 500:
+            ratio = 0.7  # Low power: thicker tip, less taper
+        elif motor_power < 1200:
+            ratio = 0.5  # Medium power: moderate taper
+        else:
+            ratio = 0.35  # High power: strong taper for heat transfer
+        self.t_tip = ratio * t_base
 
     def fin_efficiency(self, h, k):
         # Approximation using mean thickness
@@ -275,13 +289,14 @@ class DesignOptimizer:
         N, H, t_base, tb = x
         L = self.motor.get('casing_length', 0.1)
         W = self.motor.get('casing_width', 0.1)
+        motor_power = float(self.motor.get('rated_power', 1000.0))
         
         if geom_type == 'Rectangular':
             return RectangularFin(N, H, t_base, L, W)
         elif geom_type == 'Triangular':
             return TriangularFin(N, H, t_base, L, W)
         elif geom_type == 'Trapezoidal':
-            return TrapezoidalFin(N, H, t_base, L, W)
+            return TrapezoidalFin(N, H, t_base, L, W, motor_power)
         return None
 
     def evaluate_full(self, x, geom_type, mat_name=None):
@@ -315,22 +330,86 @@ class DesignOptimizer:
         }
 
     def objective_function(self, x, geom_type):
+        """
+        Objective function with comprehensive physical constraints.
+        x = [N, H, t_base, tb]
+        """
         res = self.evaluate_full(x, geom_type)
         if not res['valid']: return 1e6
         
+        motor_diameter = self.motor.get('motor_diameter', 0.1)
+        motor_length = self.motor.get('motor_length', 0.1)
+        rated_power = float(self.motor.get('rated_power', 1000.0))
         max_temp = self.motor.get('max_temp', 100.0)
         max_h = self.constraints.get('max_height', 0.1)
         min_t = self.constraints.get('min_fin_thickness', 0.001)
         
-        if x[1] > max_h: return 1e6
-        if x[2] < min_t: return 1e6
-        
+        H = x[1]
+        s = res['parameters']['s']
+        t_tip = res['parameters'].get('t_tip', x[2])
         T = res['temperature']
         M = res['mass']
         
+        # FIX 1: Maximum fin height cannot exceed half the motor diameter
+        # Fins grow radially outward, so max H = motor_diameter / 2
+        max_h_diameter = motor_diameter * 0.5
+        if H > max_h_diameter:
+            return 1e6
+        
+        # FIX 2: Secondary height constraint - limit by motor length
+        # Prevent extremely tall fins
+        max_h_length = motor_length * 0.6
+        if H > max_h_length:
+            return 1e6
+        
+        # FIX 3: Basic constraints
+        if H > max_h: return 1e6
+        if x[2] < min_t: return 1e6
+        
+        # FIX 4: Minimum height constraint - avoid tiny fins
+        MIN_HEIGHT = 0.005  # 5mm minimum
+        if H < MIN_HEIGHT:
+            return 1e6
+        
+        # FIX 7: Physical sanity checks for spacing
+        # Spacing too large (poor heat transfer)
+        if s > 0.015:
+            return 1e6
+        
+        # Spacing too small (manufacturing constraint)
+        if s < 0.0002:
+            return 1e6
+        
+        # FIX 8: Power-based minimum height scaling
+        if rated_power > 1000:
+            min_height_power = 0.02
+        elif rated_power > 500:
+            min_height_power = 0.012
+        else:
+            min_height_power = 0.006
+        
+        if H < min_height_power:
+            penalty_height = (min_height_power - H) ** 2 * 50.0
+            return M * 10.0 + penalty_height
+        
+        # FIX 9: Geometry sanity rule - rectangular not suitable for high power
+        if rated_power > 800 and geom_type == "Rectangular":
+            return 1e6
+        
+        # Additional tip thickness check
+        if t_tip < 0.0003:
+            return 1e6
+        
+        spacing_mm = s * 1000
+        
         penalty = 0
         if T > max_temp:
-            penalty = (T - max_temp)**2 * 100 
+            penalty = (T - max_temp)**2 * 100
+        
+        # Fin density sanity check: penalize if spacing > 10mm (encourages dense fins)
+        if spacing_mm > 10.0:
+            density_penalty = (spacing_mm - 10.0) ** 2 * 5.0
+            penalty += density_penalty
             
         return M * 10.0 + penalty
 
@@ -361,24 +440,65 @@ class DesignOptimizer:
 
     def optimize(self, material_name="6063-T5", geometry_type=None):
         self.target_alloy = material_name
-        if geometry_type:
-            geometries = [geometry_type]
-        else:
-            geometries = ['Rectangular', 'Triangular', 'Trapezoidal']
+        _ = geometry_type
+        # Always evaluate all geometries; ML guidance is treated as an initial hint only.
+        geometries = ['Trapezoidal', 'Triangular', 'Rectangular']
+
+        rated_power = float(self.motor.get('rated_power', 0.0) or 0.0)
+        force_trapezoidal = rated_power > HIGH_POWER_TRAPEZOIDAL_THRESHOLD_W
         
         best = None
         candidates = []  # Store all valid candidates for comparison
+        best_temp_margin = float('inf')
+        best_near_feasible = None
         
         max_h = self.constraints.get('max_height', 0.1)
         min_t = self.constraints.get('min_fin_thickness', 0.001)
         t_max = self.motor.get('max_temp', 100.0)
         
-        bounds = [
-            (5, 60),       # N
-            (0.01, max_h), # H
-            (min_t, 0.01), # t_base
-            (0.002, 0.015) # tb
-        ]
+        # FIX 6: Restrict optimizer bounds based on motor geometry
+        motor_diameter = self.motor.get('motor_diameter', 0.1)
+        motor_length = self.motor.get('motor_length', 0.1)
+        
+        # Maximum fin height constraints:
+        # - Cannot exceed half the motor diameter (radial growth)
+        # - Cannot exceed 60% of motor length
+        max_h_diameter = motor_diameter * 0.5
+        max_h_length = motor_length * 0.6
+        max_h_constrained = min(max_h, max_h_diameter, max_h_length)
+        
+        # Minimum height based on power (FIX 8)
+        if rated_power > 1000:
+            min_height = 0.02
+        elif rated_power > 500:
+            min_height = 0.012
+        else:
+            min_height = 0.006
+
+        if force_trapezoidal:
+            # High-power motors require denser, taller trapezoidal fins for adequate cooling.
+            h_low = max(min_height, 0.02)
+            h_high = min(max_h_constrained, 0.03)
+            if h_high <= h_low:
+                h_low = min_height
+                h_high = max_h_constrained
+            bounds = [
+                (16, 22),                         # N
+                (h_low, h_high),                  # H
+                (max(min_t, 0.0012), 0.0018),    # t_base
+                (0.002, 0.015)                    # tb
+            ]
+        else:
+            bounds = [
+                (MIN_FIN_COUNT, 60),              # N
+                (min_height, max_h_constrained),  # H (FIX 6: restricted by motor dims)
+                (min_t, 0.01),                    # t_base
+                (0.002, 0.015)                    # tb
+            ]
+
+        # Tunable optimization cost controls for API responsiveness.
+        maxiter = int(os.getenv("FINS_OPTIMIZER_MAXITER", "12"))
+        popsize = int(os.getenv("FINS_OPTIMIZER_POPSIZE", "6"))
         
         for geom in geometries:
             res = differential_evolution(
@@ -386,8 +506,8 @@ class DesignOptimizer:
                 bounds,
                 args=(geom,),
                 strategy='best1bin',
-                maxiter=30,
-                popsize=10,
+                maxiter=maxiter,
+                popsize=popsize,
                 tol=0.01,
                 seed=42
             )
@@ -399,8 +519,29 @@ class DesignOptimizer:
             
             if not final_eval['valid']:
                 continue
+
+            if force_trapezoidal and geom != 'Trapezoidal':
+                continue
+            
+            # FIX 10: Final validation before return - reject physically impossible designs
+            final_H = final_eval['parameters']['H']
+            final_N = final_eval['parameters']['N']
+            final_t_tip = final_eval['parameters'].get('t_tip', final_eval['parameters']['t_base'])
+            
+            # Rejections:
+            if final_H > motor_diameter * 0.5:
+                continue  # Height exceeds motor diameter constraint
+            if final_N < 5:
+                continue  # Too few fins
+            if final_t_tip < 0.0003:
+                continue  # Tip too thin
             
             t_actual = final_eval['temperature']
+
+            temp_excess = t_actual - t_max
+            if temp_excess < best_temp_margin:
+                best_temp_margin = temp_excess
+                best_near_feasible = final_eval
             
             # Only consider designs that meet temperature constraint
             if t_actual <= t_max:
@@ -419,28 +560,9 @@ class DesignOptimizer:
                     'score': r_thermal  # Primary sorting metric
                 })
         
-        # If no designs meet temperature constraint, pick the closest one
+        # If no designs meet temperature constraint, use closest one already evaluated.
         if not candidates:
-            best_temp_margin = float('inf')
-            for geom in geometries:
-                res = differential_evolution(
-                    self.objective_function,
-                    bounds,
-                    args=(geom,),
-                    strategy='best1bin',
-                    maxiter=30,
-                    popsize=10,
-                    tol=0.01,
-                    seed=42
-                )
-                x_final = res.x
-                x_final[0] = round(x_final[0])
-                final_eval = self.evaluate_full(x_final, geom, material_name)
-                if final_eval['valid']:
-                    temp_excess = final_eval['temperature'] - t_max
-                    if temp_excess < best_temp_margin:
-                        best_temp_margin = temp_excess
-                        best = final_eval
+            best = best_near_feasible
         else:
             # Sort by thermal resistance (best thermal performance first)
             candidates.sort(key=lambda c: c['score'])

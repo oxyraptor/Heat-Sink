@@ -5,10 +5,8 @@ DRF Views for Heat Sink Optimization API
 import os
 import joblib
 import pandas as pd
-import numpy as np
 from rest_framework import viewsets, status
 import json
-import traceback
 from core.logger import get_api_logger
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,9 +14,7 @@ from rest_framework.views import APIView
 
 from .serializers import (
     RecommendationRequestSerializer,
-    RecommendationResponseSerializer,
     MLRequestSerializer,
-    MLResponseSerializer,
     StatusResponseSerializer,
     MaterialListResponseSerializer,
 )
@@ -41,12 +37,23 @@ ML_MODELS_DIR = os.path.join(BASE_DIR, 'ml_models')
 # Load ML Models
 logger = get_api_logger()
 
+
+def _parse_bool(value, default=False):
+    if value is None:
+        return default
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "on"}
+    return bool(value)
+
+
 try:
-    ml_model = joblib.load(os.path.join(ML_MODELS_DIR, "thermal_model.pkl"))
     inverse_model = joblib.load(os.path.join(ML_MODELS_DIR, "inverse_model.pkl"))
     logger.success("ML Models loaded into memory successfully")
 except Exception as e:
-    ml_model = None
     inverse_model = None
     logger.warning(f"ML Models not available", exception=e)
 
@@ -122,6 +129,20 @@ class HeatSinkViewSet(viewsets.ViewSet):
             # Add metadata
             result['alloy'] = target_alloy
             result['alloy_properties'] = get_material_properties(target_alloy)
+            
+            # FIX 5: Add fin count mapping for UI display (number_of_fins)
+            if 'N' in result['parameters']:
+                result['number_of_fins'] = int(result['parameters']['N'])
+            
+            # FIX 9: Convert parameters to mm for UI display
+            if 'parameters' in result:
+                result['parameters_mm'] = {
+                    'H': result['parameters']['H'] * 1000,  # Convert m to mm
+                    's': result['parameters']['s'] * 1000,  # Convert m to mm
+                    't_base': result['parameters']['t_base'] * 1000,  # Convert m to mm
+                    't_tip': result['parameters'].get('t_tip', 0) * 1000,  # Convert m to mm
+                    'N': result['parameters']['N']
+                }
 
             # Return response
             return Response(result, status=status.HTTP_200_OK)
@@ -170,9 +191,10 @@ class HeatSinkViewSet(viewsets.ViewSet):
             pred = inverse_model.predict(df)[0]
             # Pred Schema: [Opt_N, Opt_H, Opt_t_base, Pred_Temp, Pred_Mass]
 
-            N_pred = int(pred[0])
-            H_pred = float(pred[1])
-            t_base_pred = float(pred[2])
+            # Clamp ML predicted values to realistic bounds (Fix #8)
+            N_pred = max(int(pred[0]), 10)  # Minimum 10 fins
+            H_pred = max(float(pred[1]), 0.01)  # Minimum 10mm height
+            t_base_pred = max(float(pred[2]), 0.001)  # Minimum 1mm thickness
 
             # Calculate derived geometrical values for display
             width_m = validated_data['width']
@@ -212,12 +234,14 @@ class HeatSinkViewSet(viewsets.ViewSet):
             velocity_uniformity_min = float(request.data.get('velocity_uniformity_min', 0.84))
             inlet_velocity = float(request.data.get('inlet_velocity', 14.0))
             max_iterations = int(request.data.get('max_iterations', 20))
-            allow_separation = bool(request.data.get('allow_separation', False))
+            history_limit = max(1, int(request.data.get('history_limit', 25)))
+            include_iterations = _parse_bool(request.data.get('include_iterations', True), default=True)
+            allow_separation = _parse_bool(request.data.get('allow_separation', False), default=False)
             motor = request.data.get('motor', {}) or {}
+            input_file = None
 
             # Create temporary input design file
             with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                import json
                 json.dump({
                     "parameters": DesignIO.default_parameters(),
                     "metadata": {"source": "api"}
@@ -252,6 +276,8 @@ class HeatSinkViewSet(viewsets.ViewSet):
                     max_iterations=max_iterations,
                     output_dir=output_dir,
                     learning_rate=0.15,
+                    include_iterations_in_response=include_iterations,
+                    history_limit=history_limit,
                 )
 
                 # Run optimization
@@ -267,43 +293,14 @@ class HeatSinkViewSet(viewsets.ViewSet):
                 return Response(result, status=status.HTTP_200_OK)
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
+            logger.error("CFD optimization failed", exception=e)
             return Response(
                 {"detail": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-
-
-class StatusView(APIView):
-    """
-    Simple status view for root endpoint.
-    """
-    def get(self, request):
-        """
-        Returns the API status.
-        GET /
-        """
-        data = {
-            "status": "System Operational",
-            "message": "Heat Sink Optimization API"
-        }
-        serializer = StatusResponseSerializer(data)
-        return Response(serializer.data)
-
-
-class MaterialsView(APIView):
-    """
-    Materials list view.
-    """
-    def get(self, request):
-        """
-        Returns list of available aluminum alloys.
-        GET /materials
-        """
-        data = {"alloys": list_materials()}
-        serializer = MaterialListResponseSerializer(data)
-        return Response(serializer.data)
+        finally:
+            if input_file and input_file.exists():
+                input_file.unlink(missing_ok=True)
 
 
 class HealthCheckView(APIView):

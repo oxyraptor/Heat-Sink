@@ -52,6 +52,8 @@ class OptimizationConfig:
     output_dir: Path = Path(".")
     learning_rate: float = 0.15
     command_template: Optional[str] = None
+    include_iterations_in_response: bool = True
+    history_limit: int = 25
 
 
 @dataclass
@@ -548,6 +550,14 @@ class CFDOptimizationAgent:
         best_entry: Optional[Dict[str, Any]] = None
         best_score = math.inf
 
+        def response_iterations() -> Tuple[List[Dict[str, Any]], bool]:
+            if not self.config.include_iterations_in_response:
+                return [], bool(history)
+            safe_limit = max(1, int(self.config.history_limit))
+            if len(history) <= safe_limit:
+                return history, False
+            return history[-safe_limit:], True
+
         for k in range(1, self.config.max_iterations + 1):
             iter_name = f"design_iter_{k:03d}.{ext}"
             iter_file = self.config.output_dir / iter_name
@@ -608,6 +618,7 @@ class CFDOptimizationAgent:
                     source_geometry_file=source_file,
                 )
                 history.append(entry)
+                returned_iterations, is_truncated = response_iterations()
                 summary = {
                     "status": "PASS",
                     "iteration_count": k,
@@ -620,7 +631,9 @@ class CFDOptimizationAgent:
                         "velocity_uniformity_min": self.config.validation.velocity_uniformity_min,
                         "no_turbulence_separation": self.config.validation.no_turbulence_separation,
                     },
-                    "iterations": history,
+                    "iterations": returned_iterations,
+                    "iterations_returned": len(returned_iterations),
+                    "iterations_truncated": is_truncated,
                 }
                 self._write_summary(summary)
                 return summary
@@ -645,6 +658,7 @@ class CFDOptimizationAgent:
             file_type=self.config.file_type,
             source_geometry_file=source_file,
         )
+        returned_iterations, is_truncated = response_iterations()
         summary = {
             "status": "MAX_ITERATIONS_REACHED",
             "iteration_count": self.config.max_iterations,
@@ -663,7 +677,9 @@ class CFDOptimizationAgent:
                 "velocity_uniformity_min": self.config.validation.velocity_uniformity_min,
                 "no_turbulence_separation": self.config.validation.no_turbulence_separation,
             },
-            "iterations": history,
+            "iterations": returned_iterations,
+            "iterations_returned": len(returned_iterations),
+            "iterations_truncated": is_truncated,
         }
         self._write_summary(summary)
         return summary

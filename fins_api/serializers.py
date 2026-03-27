@@ -13,11 +13,23 @@ class MotorSpecsSerializer(serializers.Serializer):
     rated_current = serializers.FloatField(required=False, allow_null=True, help_text="Current in Amps")
     efficiency = serializers.FloatField(required=False, allow_null=True, help_text="Efficiency (0.0 to 1.0)")
     max_temp = serializers.FloatField(required=True, help_text="Maximum temperature in Celsius")
-    motor_diameter = serializers.FloatField(required=True, help_text="Motor diameter in meters")
-    motor_length = serializers.FloatField(required=True, help_text="Motor length in meters")
+    motor_diameter = serializers.FloatField(required=True, help_text="Motor diameter (accepts mm or m; converts to m internally)")
+    motor_length = serializers.FloatField(required=True, help_text="Motor length (accepts mm or m; converts to m internally)")
     casing_width = serializers.FloatField(required=False, default=0.1, help_text="Casing width in meters")
     casing_length = serializers.FloatField(required=False, default=0.1, help_text="Casing length in meters")
     casing_height = serializers.FloatField(required=False, default=0.1, allow_null=True, help_text="Casing height in meters")
+
+    def validate_motor_diameter(self, value):
+        """Convert mm to m if value appears to be in mm (> 1)"""
+        if value > 1:  # If > 1, assume it's in mm
+            return value / 1000.0
+        return value
+
+    def validate_motor_length(self, value):
+        """Convert mm to m if value appears to be in mm (> 1)"""
+        if value > 1:  # If > 1, assume it's in mm
+            return value / 1000.0
+        return value
 
 
 class EnvironmentSpecsSerializer(serializers.Serializer):
@@ -33,9 +45,15 @@ class EnvironmentSpecsSerializer(serializers.Serializer):
 
 class ConstraintSpecsSerializer(serializers.Serializer):
     """Serializer for design constraints"""
-    max_height = serializers.FloatField(default=0.1, help_text="Maximum height in meters (default 100mm)")
+    max_height = serializers.FloatField(default=0.1, help_text="Maximum height (accepts mm or m; converts to m internally)")
     min_fin_thickness = serializers.FloatField(default=0.001, help_text="Minimum fin thickness in meters")
     max_weight = serializers.FloatField(required=False, allow_null=True, help_text="Maximum weight in kg")
+
+    def validate_max_height(self, value):
+        """Convert mm to m if value appears to be in mm (> 1)"""
+        if value > 1:  # If > 1, assume it's in mm
+            return value / 1000.0
+        return value
 
 
 class RecommendationRequestSerializer(serializers.Serializer):
