@@ -1,0 +1,12 @@
+"""
+URL configuration for fins_project.
+"""
+
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/', include('fins_api.urls')),
+    path('', include('fins_api.urls')),
+]

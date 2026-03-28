@@ -1,0 +1,43 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual env
+venv/
+env/
+.venv/
+
+# Git
+.git/
+.gitignore
+
+# Local DB
+db.sqlite3
+*.sqlite3
+
+# Static & media (recreated in container)
+staticfiles/
+media/
+
+# Logs
+*.log
+
+# Tests & dev stuff
+tests/
+test_*.py
+*_test.py
+.pytest_cache/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node / frontend (VERY IMPORTANT)
+ui/
+frontend/
+node_modules/
