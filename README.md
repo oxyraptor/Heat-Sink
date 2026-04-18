@@ -4,6 +4,16 @@ A complete heat sink optimization system with Django REST Framework backend and 
 
 ## 🚀 Quick Start
 
+### One-Command Setup
+
+Install all backend and frontend dependencies in one step:
+
+```bash
+python setup.py
+```
+
+This installs Python dependencies, runs Django migrations, and installs Node.js packages.
+
 ### Backend (Django)
 
 **Development Mode** (with hot reload):
@@ -35,6 +45,23 @@ npm run dev
 
 Frontend runs at: `http://localhost:5173/`
 
+### Environment Variables
+
+Copy the example files and set your values before running:
+
+```bash
+cp backend/.env.example backend/.env   # Django secret key, allowed hosts, CORS origins
+cp ui/.env.example ui/.env             # VITE_API_BASE_URL for the frontend
+```
+
+| File | Key | Description |
+| ---- | --- | ----------- |
+| `backend/.env` | `SECRET_KEY` | Django secret key (required in production) |
+| `backend/.env` | `DEBUG` | `True` for dev, `False` for prod |
+| `backend/.env` | `ALLOWED_HOSTS` | Comma-separated allowed hostnames |
+| `backend/.env` | `CORS_ALLOWED_ORIGINS` | Comma-separated allowed CORS origins |
+| `ui/.env` | `VITE_API_BASE_URL` | Backend API base URL (default: `http://localhost:8001`) |
+
 ## 📚 Documentation Hub
 
 Use these links to jump directly to the exact documentation you need:
@@ -51,7 +78,7 @@ Use these links to jump directly to the exact documentation you need:
 ## 📁 Project Structure
 
 ```
-Fins/
+Heat-Sink/
 ├── 📂 backend/                 # Django Backend
 │   ├── core/                   # Business Logic
 │   │   ├── optimizer.py        # Heat sink optimization algorithms
@@ -77,9 +104,15 @@ Fins/
 │   │   ├── tests.py            # Test cases
 │   │   └── models.py           # Database models
 │   │
+│   ├── tests/                  # Test Suite
+│   │   ├── unit/               # Unit tests
+│   │   ├── integration/        # Integration tests
+│   │   └── utilities/          # Test helper utilities
+│   │
 │   ├── manage.py               # Django CLI
 │   ├── start_django.py         # Development server launcher
 │   ├── start_production.py     # Production server launcher
+│   ├── .env.example            # Backend environment variable template
 │   ├── verify_and_test_system.py # Unified health checks + API/integration tests
 │   ├── verify_api_backend.py   # Backend/API verification tests only
 │   ├── interactive_full_test_cli.py # Interactive full-system test CLI
@@ -98,9 +131,10 @@ Fins/
 │   │   ├── components/         # UI components (shadcn-ui)
 │   │   │   └── ui/             # Reusable UI components
 │   │   └── lib/                # Utilities
-│   │       └── utils.ts        # Helper functions
+│   │       └── utils.ts        # Helper functions (cn utility)
 │   │
 │   ├── public/                 # Static assets
+│   ├── .env.example            # Frontend environment variable template
 │   ├── package.json            # NPM dependencies
 │   ├── vite.config.ts          # Vite configuration
 │   ├── tailwind.config.ts      # Tailwind CSS config
@@ -116,9 +150,7 @@ Fins/
 │   ├── AI_CFD_OPTIMIZATION_AGENT.md # Closed-loop CFD workflow spec
 │   └── PDF/                    # Additional PDF documentation
 │
-├── 📂 scripts/                 # Utility Scripts
-│   └── Scraper/                # Data scraping utilities
-│
+├── setup.py                    # One-command setup script
 ├── README.md                   # This file
 └── .gitignore                  # Git ignore rules
 ```
@@ -130,6 +162,7 @@ Fins/
 | Endpoint             | Method | Description                     |
 | -------------------- | ------ | ------------------------------- |
 | `/api/`              | GET    | API status                      |
+| `/api/health/`       | GET    | Health check (for hosting probes) |
 | `/api/materials/`    | GET    | List available alloys           |
 | `/api/recommend/`    | POST   | Heat sink optimization          |
 | `/api/predict-ml/`   | POST   | ML-based prediction             |
@@ -348,4 +381,4 @@ Proprietary - Heat Sink Optimization System
 
 ---
 
-**Last Updated**: March 25, 2026
+**Last Updated**: April 18, 2026
