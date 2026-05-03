@@ -17,6 +17,9 @@ from rest_framework.views import APIView
 from .serializers import (
     RecommendationRequestSerializer,
     RecommendationResponseSerializer,
+    DesignSuggestionRequestSerializer,
+    DesignSuggestionResponseSerializer,
+    CFDOptimizationRequestSerializer,
     MLRequestSerializer,
     MLResponseSerializer,
     StatusResponseSerializer,
@@ -132,6 +135,51 @@ class HeatSinkViewSet(viewsets.ViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=False, methods=['post'], url_path='suggest-design')
+    def suggest_design(self, request):
+        """
+        Generates a shape-aware manufacturable heat sink proposal.
+        POST /suggest-design
+        """
+        serializer = DesignSuggestionRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            validated_data = serializer.validated_data
+            motor_dict = validated_data['motor']
+            env_dict = validated_data['environment']
+            const_dict = validated_data['constraints']
+            candidate_limit = validated_data.get('candidate_limit', 3)
+            target_alloy = validated_data.get('preferred_alloy') or "6063-T5"
+
+            optimizer = DesignOptimizer(motor_dict, env_dict, const_dict)
+            result = optimizer.suggest_design(
+                material_name=target_alloy,
+                limit=candidate_limit,
+            )
+
+            if not result:
+                return Response(
+                    {
+                        "detail": "No feasible manufacturable design found for the given constraints. "
+                                  "Try increasing airflow, height, or casing dimensions."
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            response_serializer = DesignSuggestionResponseSerializer(result)
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
     @action(detail=False, methods=['post'], url_path='predict-ml')
     def predict_ml(self, request):
         """
@@ -205,74 +253,21 @@ class HeatSinkViewSet(viewsets.ViewSet):
         AI-CFD closed-loop optimization endpoint.
         POST /cfd-optimize
         """
-        try:
-            # Extract parameters
-            drag_max = float(request.data.get('drag_max', 0.17))
-            pressure_drop_max = float(request.data.get('pressure_drop_max', 130))
-            velocity_uniformity_min = float(request.data.get('velocity_uniformity_min', 0.84))
-            inlet_velocity = float(request.data.get('inlet_velocity', 14.0))
-            max_iterations = int(request.data.get('max_iterations', 20))
-            allow_separation = bool(request.data.get('allow_separation', False))
-            motor = request.data.get('motor', {}) or {}
+        # CFD optimization workflow removed. Accept only inlet_velocity and echo it back.
+        serializer = CFDOptimizationRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-            # Create temporary input design file
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
-                import json
-                json.dump({
-                    "parameters": DesignIO.default_parameters(),
-                    "metadata": {"source": "api"}
-                }, f)
-                input_file = Path(f.name)
+        inlet_velocity = serializer.validated_data.get('inlet_velocity')
 
-            # Create temporary output directory
-            with tempfile.TemporaryDirectory() as tmpdir:
-                output_dir = Path(tmpdir)
-
-                # Configure optimization
-                validation = ValidationCriteria(
-                    drag_coefficient_max=drag_max,
-                    pressure_drop_max=pressure_drop_max,
-                    velocity_uniformity_min=velocity_uniformity_min,
-                    no_turbulence_separation=(not allow_separation),
-                )
-
-                config = OptimizationConfig(
-                    input_file=input_file,
-                    file_type='json',
-                    cfd_tool='surrogate',
-                    simulation_type='steady-state',
-                    fluid='air',
-                    boundary_conditions={
-                        'inlet_velocity': inlet_velocity,
-                        'outlet_pressure': 0.0,
-                        'ambient_temp': 25.0,
-                    },
-                    motor_specs=motor,
-                    validation=validation,
-                    max_iterations=max_iterations,
-                    output_dir=output_dir,
-                    learning_rate=0.15,
-                )
-
-                # Run optimization
-                agent = CFDOptimizationAgent(config=config)
-                result = agent.run()
-
-                # Read final design file
-                final_design_file = output_dir / 'optimized_design.json'
-                if final_design_file.exists():
-                    with open(final_design_file, 'r') as f:
-                        result['final_design'] = json.load(f)
-
-                return Response(result, status=status.HTTP_200_OK)
-
-        except Exception as e:
-            import traceback
-            traceback.print_exc()
-            return Response(
-                {"detail": str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        # Return a minimal response to keep API compatibility for frontends
+        return Response(
+            {
+                "detail": "CFD optimization removed. Received inlet_velocity.",
+                "inlet_velocity": inlet_velocity,
+            },
+            status=status.HTTP_200_OK,
+        )
 
 
 class StatusView(APIView):

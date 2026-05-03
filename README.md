@@ -13,6 +13,8 @@ This is the backend service for the Heat Sink Optimization system, containerized
 
 > **Note**: This repository only contains the backend code configured for Hugging Face Spaces deployment. The frontend (React + TypeScript) is designed to be hosted separately (e.g., on Vercel).
 
+For an AI-maintainer oriented overview of the codebase, see [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md).
+
 ## 🚀 Quick Start (Local Docker)
 
 Since this repository is set up for Docker delivery to Hugging Face Spaces, utilizing Docker is the most robust way to run it locally:
@@ -43,8 +45,9 @@ The API will be available at `http://localhost:7860/api/`
 
 ## 🔌 API Endpoints
 
-### Base URL: `https://<your-hf-space-url>/api` 
-*(Locally: `http://localhost:7860/api`)*
+### Base URL: `https://<your-hf-space-url>/api`
+
+_(Locally: `http://localhost:7860/api`)_
 
 | Endpoint             | Method | Description                     |
 | -------------------- | ------ | ------------------------------- |
@@ -88,9 +91,10 @@ python verify_and_test_system.py --quick
 
 ## 🚢 Deployment
 
-By committing this repository with the `Dockerfile` and the Hugging Face Frontmatter (at the top of this README), Hugging Face Spaces will automatically build the container. 
+By committing this repository with the `Dockerfile` and the Hugging Face Frontmatter (at the top of this README), Hugging Face Spaces will automatically build the container.
 
 Inside the container, traffic is served by `gunicorn` listening on port `7860`:
+
 ```bash
 gunicorn fins_project.wsgi:application --bind 0.0.0.0:7860 --workers 2
 ```

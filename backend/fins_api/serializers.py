@@ -46,6 +46,18 @@ class RecommendationRequestSerializer(serializers.Serializer):
     preferred_alloy = serializers.CharField(required=False, allow_null=True, allow_blank=True)
 
 
+class DesignSuggestionRequestSerializer(RecommendationRequestSerializer):
+    """Serializer for manufacturable design suggestion request"""
+    candidate_limit = serializers.IntegerField(required=False, default=3, min_value=1, max_value=4)
+
+
+class CFDOptimizationRequestSerializer(serializers.Serializer):
+    """Serializer for CFD closed-loop optimization request"""
+    # CFD optimization was removed; keep only inlet_velocity for downstream workflows
+    # Make inlet_velocity optional with a default to avoid validation issues when omitted
+    inlet_velocity = serializers.FloatField(required=False, default=14.0, min_value=0.0)
+
+
 class MLRequestSerializer(serializers.Serializer):
     """Serializer for ML prediction request"""
     Q_heat = serializers.FloatField(required=True)
@@ -88,6 +100,52 @@ class RecommendationResponseSerializer(serializers.Serializer):
     h_avg = serializers.FloatField()
     is_valid = serializers.BooleanField()
     sensitivity = serializers.DictField()
+
+
+class DesignGeometrySerializer(serializers.Serializer):
+    """Serializer for complete manufacturable geometry proposal"""
+    base_length = serializers.FloatField()
+    base_width = serializers.FloatField()
+    base_thickness = serializers.FloatField()
+    fin_height = serializers.FloatField()
+    fin_width = serializers.FloatField()
+    fin_thickness = serializers.FloatField()
+    fin_spacing = serializers.FloatField()
+    fin_pitch = serializers.FloatField()
+    fin_count = serializers.IntegerField()
+    arrangement = serializers.CharField()
+
+
+class DesignCandidateSerializer(serializers.Serializer):
+    """Serializer for ranked design candidate"""
+    shape = serializers.CharField()
+    geometry_family = serializers.CharField()
+    score = serializers.FloatField()
+    thermal_score = serializers.FloatField()
+    predicted_temp = serializers.FloatField()
+    constraint_passed = serializers.BooleanField()
+    arrangement = serializers.CharField()
+    explanation = serializers.CharField()
+    geometry = DesignGeometrySerializer()
+    validation = serializers.DictField()
+
+
+class DesignSuggestionResponseSerializer(serializers.Serializer):
+    """Serializer for shape-aware design synthesis response"""
+    recommended_shape = serializers.CharField()
+    alternative_shapes = serializers.ListField(child=serializers.CharField())
+    geometry_family = serializers.CharField()
+    geometry = DesignGeometrySerializer()
+    thermal_score = serializers.FloatField()
+    predicted_temp = serializers.FloatField()
+    constraint_passed = serializers.BooleanField()
+    arrangement = serializers.CharField()
+    explanation = serializers.CharField()
+    classified_envelope = serializers.DictField()
+    ranked_candidates = DesignCandidateSerializer(many=True)
+    rejected_shapes = serializers.ListField(child=serializers.DictField())
+    units = serializers.CharField()
+    alloy = serializers.CharField()
 
 
 class MLResponseSerializer(serializers.Serializer):

@@ -39,7 +39,10 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = _get_bool_env('DEBUG', True)
 
-ALLOWED_HOSTS = _get_list_env('ALLOWED_HOSTS', ['*'])
+ALLOWED_HOSTS = _get_list_env('ALLOWED_HOSTS', [
+    '*',
+    'oxyraptor-heat-sink-backend.hf.space',
+])
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
@@ -166,6 +169,8 @@ CORS_ALLOW_HEADERS = [
 CSRF_TRUSTED_ORIGINS = [
     "https://*.hf.space",
     "https://*.vercel.app",
+    "https://oxyraptor-heat-sink-backend.hf.space",
+    "https://heat-sink.vercel.app",
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -175,5 +180,20 @@ if _cors_allowed_origins:
     CORS_ALLOW_ALL_ORIGINS = False
     CORS_ALLOWED_ORIGINS = _cors_allowed_origins
 else:
-    CORS_ALLOW_ALL_ORIGINS = DEBUG
-    CORS_ALLOWED_ORIGINS = []
+    if DEBUG:
+        CORS_ALLOW_ALL_ORIGINS = False
+        CORS_ALLOWED_ORIGINS = [
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:8000",
+            "http://127.0.0.1:8000",
+        ]
+    else:
+        # Production fallback: allow HF Spaces and common frontend hosts.
+        # Override at runtime via the CORS_ALLOWED_ORIGINS env variable if needed.
+        CORS_ALLOW_ALL_ORIGINS = False
+        # No trailing slash — Django CORS matches origins exactly.
+        CORS_ALLOWED_ORIGINS = [
+            "https://heat-sink.vercel.app",
+            "https://oxyraptor-heat-sink-backend.hf.space",
+        ]

@@ -456,3 +456,242 @@ class DesignOptimizer:
             best['dominant_factor'] = max(norm_imp, key=norm_imp.get) if norm_imp else "None"
             
         return best
+
+    def _classify_design_envelope(self):
+        heat_load = self.model.get_heat_load()
+        width = self.motor.get('casing_width', 0.1)
+        length = self.motor.get('casing_length', 0.1)
+        footprint_area = max(width * length, 1e-6)
+        aspect_ratio = max(width, length) / max(min(width, length), 1e-6)
+        heat_flux = heat_load / footprint_area
+        airflow = self.env.get('airflow_type', 'Natural')
+        velocity = self.env.get('air_velocity', 0.0) or 0.0
+
+        if footprint_area < 0.008:
+            footprint_class = 'compact'
+        elif footprint_area < 0.02:
+            footprint_class = 'medium'
+        else:
+            footprint_class = 'large'
+
+        if heat_load >= 150 or heat_flux >= 15000:
+            heat_load_class = 'high'
+        elif heat_load >= 60 or heat_flux >= 6000:
+            heat_load_class = 'moderate'
+        else:
+            heat_load_class = 'low'
+
+        if airflow == 'Natural' or velocity < 1.0:
+            convection_class = 'natural'
+        elif airflow == 'Mixed' or velocity < 3.0:
+            convection_class = 'mixed'
+        else:
+            convection_class = 'forced'
+
+        return {
+            'footprint_class': footprint_class,
+            'heat_load_class': heat_load_class,
+            'convection_class': convection_class,
+            'heat_load_watts': heat_load,
+            'footprint_area': footprint_area,
+            'aspect_ratio': aspect_ratio,
+            'heat_flux_w_per_m2': heat_flux,
+        }
+
+    def _score_shape_family(self, shape, envelope):
+        aspect = envelope['aspect_ratio']
+        footprint = envelope['footprint_class']
+        heat = envelope['heat_load_class']
+        convection = envelope['convection_class']
+        reasons = []
+
+        if shape == 'rectangle':
+            score = 0.54
+            if aspect >= 1.25:
+                score += 0.22
+                reasons.append('one footprint axis can be extended for more fin length')
+            if convection in ('forced', 'mixed'):
+                score += 0.08
+                reasons.append('parallel channels align well with available airflow')
+            if footprint == 'medium':
+                score += 0.04
+                reasons.append('medium footprint supports efficient straight fins')
+        elif shape == 'square':
+            score = 0.52 + max(0.0, 0.24 * (1.0 - min(abs(aspect - 1.0), 1.0)))
+            if aspect < 1.2:
+                reasons.append('footprint is balanced in both directions')
+            if convection == 'natural':
+                score += 0.08
+                reasons.append('balanced base area is suitable for natural convection layouts')
+            if footprint == 'compact':
+                score += 0.04
+                reasons.append('compact envelope benefits from symmetric area use')
+        elif shape == 'trapezial':
+            score = 0.46
+            if convection in ('forced', 'mixed'):
+                score += 0.18
+                reasons.append('tapered passages can help flow-assisted layouts')
+            if heat == 'high':
+                score += 0.12
+                reasons.append('higher heat load benefits from taper-aware fin geometry')
+            if aspect >= 1.35:
+                score += 0.06
+                reasons.append('elongated footprint leaves room for guided channels')
+        else:
+            score = 0.44
+            if heat in ('moderate', 'high'):
+                score += 0.14
+                reasons.append('tapered fins improve surface-area-to-volume behavior')
+            if footprint == 'compact':
+                score += 0.10
+                reasons.append('compact envelope rewards lower fin volume')
+            if convection == 'natural':
+                score += 0.04
+                reasons.append('open tapered channels reduce blockage risk')
+
+        if not reasons:
+            reasons.append('baseline rules found no stronger competing advantage')
+
+        return min(score, 0.98), reasons
+
+    def _shape_to_geometry_type(self, shape):
+        if shape in ('rectangle', 'square'):
+            return 'Rectangular'
+        if shape == 'trapezial':
+            return 'Trapezoidal'
+        return 'Triangular'
+
+    def _shape_arrangement(self, shape):
+        return {
+            'rectangle': 'parallel-straight',
+            'square': 'parallel-straight',
+            'trapezial': 'tapered-parallel',
+            'triangular': 'tapered-inline',
+        }[shape]
+
+    def _thermal_score(self, design):
+        max_temp = self.motor.get('max_temp', 100.0)
+        ambient = self.env.get('ambient_temp', 25.0)
+        temp = design.get('temperature', max_temp + 100)
+        usable_delta = max(max_temp - ambient, 1.0)
+        margin_score = max(0.0, min(1.0, (max_temp - temp) / usable_delta))
+        resistance = design.get('thermal_resistance', 999.0)
+        resistance_score = 1.0 / (1.0 + max(resistance, 0.0))
+        return round((0.72 * margin_score) + (0.28 * resistance_score), 3)
+
+    def _manufacturing_checks(self, design):
+        params = design['parameters']
+        min_spacing = 0.001
+        min_thickness = self.constraints.get('min_fin_thickness', 0.001)
+        max_height = self.constraints.get('max_height', 0.1)
+        checks = {
+            'minimum_spacing': params['s'] >= min_spacing,
+            'minimum_fin_thickness': params['t_base'] >= min_thickness,
+            'height_limit': params['H'] <= max_height,
+            'positive_fin_count': params['N'] >= 1,
+            'positive_base_thickness': params['tb'] > 0,
+        }
+        return checks
+
+    def _format_design_suggestion(self, shape, rule_score, reasons, design):
+        params = design['parameters']
+        checks = self._manufacturing_checks(design)
+        constraint_passed = (
+            design.get('valid', False)
+            and design.get('temperature', 1e6) <= self.motor.get('max_temp', 100.0)
+            and all(checks.values())
+        )
+        return {
+            'shape': shape,
+            'geometry_family': design['geometry'],
+            'score': round((rule_score * 0.35) + (self._thermal_score(design) * 0.65), 3),
+            'thermal_score': self._thermal_score(design),
+            'predicted_temp': round(design['temperature'], 3),
+            'constraint_passed': constraint_passed,
+            'arrangement': self._shape_arrangement(shape),
+            'explanation': '; '.join(reasons),
+            'geometry': {
+                'base_length': self.motor.get('casing_length', 0.1),
+                'base_width': self.motor.get('casing_width', 0.1),
+                'base_thickness': params['tb'],
+                'fin_height': params['H'],
+                'fin_width': params.get('t_tip', params['t_base']),
+                'fin_thickness': params['t_base'],
+                'fin_spacing': params['s'],
+                'fin_pitch': params['s'] + params['t_base'],
+                'fin_count': params['N'],
+                'arrangement': self._shape_arrangement(shape),
+            },
+            'validation': {
+                'thermal_constraint': design['temperature'] <= self.motor.get('max_temp', 100.0),
+                'manufacturability': all(checks.values()),
+                'checks': checks,
+            },
+        }
+
+    def suggest_design(self, material_name="6063-T5", limit=3):
+        self.target_alloy = material_name
+        envelope = self._classify_design_envelope()
+        ranked_rules = []
+        for shape in ['rectangle', 'square', 'trapezial', 'triangular']:
+            score, reasons = self._score_shape_family(shape, envelope)
+            ranked_rules.append({
+                'shape': shape,
+                'rule_score': score,
+                'reasons': reasons,
+                'geometry_type': self._shape_to_geometry_type(shape),
+            })
+
+        ranked_rules.sort(key=lambda item: item['rule_score'], reverse=True)
+        suggestions = []
+        # Cache optimize() results by geometry_type to avoid duplicate solver runs.
+        # 'rectangle' and 'square' both map to 'Rectangular', so without caching
+        # differential_evolution would run twice with identical inputs.
+        _design_cache: dict = {}
+        for item in ranked_rules:
+            geom_type = item['geometry_type']
+            if geom_type not in _design_cache:
+                _design_cache[geom_type] = self.optimize(material_name=material_name, geometry_type=geom_type)
+            design = _design_cache[geom_type]
+            if design:
+                suggestions.append(
+                    self._format_design_suggestion(
+                        item['shape'],
+                        item['rule_score'],
+                        item['reasons'],
+                        design,
+                    )
+                )
+
+        suggestions.sort(key=lambda item: item['score'], reverse=True)
+        if not suggestions:
+            return None
+
+        chosen = suggestions[0]
+        alternatives = suggestions[1:limit]
+        rejected_shapes = [
+            {
+                'shape': item['shape'],
+                'score': round(item['rule_score'], 3),
+                'reason': '; '.join(item['reasons']),
+            }
+            for item in ranked_rules
+            if item['shape'] != chosen['shape']
+        ]
+
+        return {
+            'recommended_shape': chosen['shape'],
+            'alternative_shapes': [item['shape'] for item in alternatives],
+            'geometry_family': chosen['geometry_family'],
+            'geometry': chosen['geometry'],
+            'thermal_score': chosen['thermal_score'],
+            'predicted_temp': chosen['predicted_temp'],
+            'constraint_passed': chosen['constraint_passed'],
+            'arrangement': chosen['arrangement'],
+            'explanation': chosen['explanation'],
+            'classified_envelope': envelope,
+            'ranked_candidates': [chosen] + alternatives,
+            'rejected_shapes': rejected_shapes,
+            'units': 'm',
+            'alloy': material_name,
+        }

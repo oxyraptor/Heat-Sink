@@ -65,3 +65,38 @@ class HeatSinkAPITestCase(TestCase):
         }
         response = self.client.post('/recommend/', payload, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_suggest_design_endpoint_schema(self):
+        """Test design suggestion endpoint returns shape-aware geometry"""
+        payload = {
+            "motor": {
+                "motor_type": "Servo",
+                "rated_power": 600,
+                "rated_voltage": 48,
+                "rated_current": 14,
+                "max_temp": 180,
+                "motor_diameter": 0.06,
+                "motor_length": 0.12,
+                "casing_width": 0.08,
+                "casing_length": 0.12,
+                "casing_height": 0.08
+            },
+            "environment": {
+                "ambient_temp": 25,
+                "airflow_type": "Forced",
+                "air_velocity": 8
+            },
+            "constraints": {
+                "max_height": 0.08,
+                "min_fin_thickness": 0.001
+            },
+            "candidate_limit": 2
+        }
+        response = self.client.post('/suggest-design/', payload, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn(response.data['recommended_shape'], ['rectangle', 'square', 'trapezial', 'triangular'])
+        self.assertIn('geometry', response.data)
+        self.assertIn('ranked_candidates', response.data)
+        self.assertGreaterEqual(len(response.data['ranked_candidates']), 1)
+        self.assertIn('fin_count', response.data['geometry'])
+        self.assertIn('fin_pitch', response.data['geometry'])

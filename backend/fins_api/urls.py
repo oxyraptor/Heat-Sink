@@ -22,6 +22,9 @@ urlpatterns = [
     
     # Recommendation endpoint
     path('recommend/', HeatSinkViewSet.as_view({'post': 'recommend'}), name='recommend'),
+
+    # Shape-aware design suggestion endpoint
+    path('suggest-design/', HeatSinkViewSet.as_view({'post': 'suggest_design'}), name='suggest-design'),
     
     # ML prediction endpoint
     path('predict-ml/', HeatSinkViewSet.as_view({'post': 'predict_ml'}), name='predict-ml'),
