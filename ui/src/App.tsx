@@ -31,7 +31,11 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as
   | undefined;
 const API_BASE_URLS = configuredBaseUrl
   ? [normalizeBaseUrl(configuredBaseUrl)]
-  : ["/api"];
+  : [
+      "https://oxyraptor-heat-sink-backend.hf.space",
+      "http://localhost:8001",
+      "http://127.0.0.1:8001",
+    ];
 
 // Fields to exclude from results display
 const EXCLUDED_FIELDS = [

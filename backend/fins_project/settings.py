@@ -173,27 +173,21 @@ CSRF_TRUSTED_ORIGINS = [
     "https://heat-sink.vercel.app",
 ]
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_ALL_ORIGINS = False
 
-_cors_allowed_origins = [orig.rstrip('/') for orig in _get_list_env('CORS_ALLOWED_ORIGINS')]
-if _cors_allowed_origins:
-    CORS_ALLOW_ALL_ORIGINS = False
-    CORS_ALLOWED_ORIGINS = _cors_allowed_origins
-else:
-    if DEBUG:
-        CORS_ALLOW_ALL_ORIGINS = False
-        CORS_ALLOWED_ORIGINS = [
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-            "http://localhost:8000",
-            "http://127.0.0.1:8000",
-        ]
-    else:
-        # Production fallback: allow HF Spaces and common frontend hosts.
-        # Override at runtime via the CORS_ALLOWED_ORIGINS env variable if needed.
-        CORS_ALLOW_ALL_ORIGINS = False
-        # No trailing slash — Django CORS matches origins exactly.
-        CORS_ALLOWED_ORIGINS = [
-            "https://heat-sink.vercel.app",
-            "https://oxyraptor-heat-sink-backend.hf.space",
-        ]
+# Build allowed origins: start with the hardcoded list, then extend with any
+# additional origins supplied via the CORS_ALLOWED_ORIGINS environment variable.
+_CORS_DEFAULT_ORIGINS = [
+    # Production frontend
+    "https://heat-sink.vercel.app",
+    "https://oxyraptor-heat-sink-backend.hf.space",
+    # Local development
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:8001",
+    "http://127.0.0.1:8001",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+_extra_origins = [orig.rstrip("/") for orig in _get_list_env("CORS_ALLOWED_ORIGINS")]
+CORS_ALLOWED_ORIGINS = _CORS_DEFAULT_ORIGINS + _extra_origins
