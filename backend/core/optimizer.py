@@ -364,7 +364,7 @@ class DesignOptimizer:
         if geometry_type:
             geometries = [geometry_type]
         else:
-            geometries = ['Rectangular', 'Triangular', 'Trapezoidal']
+            geometries = ['Trapezoidal','Rectangular', 'Triangular' ]
         
         best = None
         candidates = []  # Store all valid candidates for comparison
@@ -629,7 +629,7 @@ class DesignOptimizer:
             },
         }
 
-    def suggest_design(self, material_name="6063-T5", limit=3):
+    def suggest_design(self, material_name="6063-T5", limit=3, geometry_type=None):
         self.target_alloy = material_name
         envelope = self._classify_design_envelope()
         ranked_rules = []
@@ -644,6 +644,46 @@ class DesignOptimizer:
 
         ranked_rules.sort(key=lambda item: item['rule_score'], reverse=True)
         suggestions = []
+        # If a geometry_type is provided, restrict suggestions to that geometry only.
+        if geometry_type:
+            # Map known geometry types back to a representative shape name
+            geom_to_shape = {
+                'Rectangular': 'rectangle',
+                'Triangular': 'triangular',
+                'Trapezoidal': 'trapezial'
+            }
+            chosen_shape = geom_to_shape.get(geometry_type, None)
+            if chosen_shape is None:
+                return None
+            design = self.optimize(material_name=material_name, geometry_type=geometry_type)
+            if not design:
+                return None
+            # Build a single suggestion response honoring the requested geometry
+            chosen = self._format_design_suggestion(
+                chosen_shape,
+                1.0,
+                ['user selected geometry'],
+                design,
+            )
+            alternatives = []
+            rejected_shapes = []
+            return {
+                'recommended_shape': chosen['shape'],
+                'alternative_shapes': [],
+                'geometry_family': chosen['geometry_family'],
+                'geometry': chosen['geometry'],
+                'thermal_score': chosen.get('thermal_score', 0.0),
+                'predicted_temp': chosen.get('predicted_temp', 0.0),
+                'constraint_passed': chosen.get('constraint_passed', False),
+                'arrangement': chosen.get('arrangement', ''),
+                'explanation': chosen.get('explanation', ''),
+                'classified_envelope': envelope,
+                'ranked_candidates': [chosen],
+                'rejected_shapes': rejected_shapes,
+                'units': 'm',
+                'alloy': material_name,
+            }
+
         # Cache optimize() results by geometry_type to avoid duplicate solver runs.
         # 'rectangle' and 'square' both map to 'Rectangular', so without caching
         # differential_evolution would run twice with identical inputs.

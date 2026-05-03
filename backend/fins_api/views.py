@@ -106,12 +106,15 @@ class HeatSinkViewSet(viewsets.ViewSet):
             # Select Material to optimize for
             # If user prefers one, use it. Else, default to 6063-T5
             target_alloy = validated_data.get('preferred_alloy') or "6063-T5"
+            
+            # Get geometry type if specified
+            geometry_type = validated_data.get('geometry_type')
 
             # Initialize optimizer
             optimizer = DesignOptimizer(motor_dict, env_dict, const_dict)
 
-            # Run optimization
-            result = optimizer.optimize(material_name=target_alloy)
+            # Run optimization with geometry type if specified
+            result = optimizer.optimize(material_name=target_alloy, geometry_type=geometry_type)
 
             if not result:
                 return Response(
@@ -157,9 +160,12 @@ class HeatSinkViewSet(viewsets.ViewSet):
             target_alloy = validated_data.get('preferred_alloy') or "6063-T5"
 
             optimizer = DesignOptimizer(motor_dict, env_dict, const_dict)
+            # Honor explicit geometry_type if provided by the frontend
+            geometry_type = validated_data.get('geometry_type')
             result = optimizer.suggest_design(
                 material_name=target_alloy,
                 limit=candidate_limit,
+                geometry_type=geometry_type,
             )
 
             if not result:

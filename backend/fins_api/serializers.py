@@ -44,11 +44,23 @@ class RecommendationRequestSerializer(serializers.Serializer):
     environment = EnvironmentSpecsSerializer(required=True)
     constraints = ConstraintSpecsSerializer(required=True)
     preferred_alloy = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    geometry_type = serializers.ChoiceField(
+        choices=['Rectangular', 'Triangular', 'Trapezoidal'],
+        required=False,
+        allow_null=True,
+        help_text="Fin geometry type to optimize for"
+    )
 
 
 class DesignSuggestionRequestSerializer(RecommendationRequestSerializer):
     """Serializer for manufacturable design suggestion request"""
     candidate_limit = serializers.IntegerField(required=False, default=3, min_value=1, max_value=4)
+    preferred_shape = serializers.ChoiceField(
+        choices=['Rectangular', 'Triangular', 'Trapezoidal'],
+        required=False,
+        allow_null=True,
+        help_text='Preferred fin shape (optional)'
+    )
 
 
 class CFDOptimizationRequestSerializer(serializers.Serializer):

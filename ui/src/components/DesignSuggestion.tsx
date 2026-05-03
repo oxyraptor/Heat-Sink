@@ -87,6 +87,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
     baseWidth: 80,
     maxHeight: 55,
     minFinThickness: 1.2,
+    shape: "Rectangular",
     ambientTemp: 25,
     airflowType: "Forced",
     airVelocity: 7,
@@ -163,6 +164,8 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           max_weight: null,
         },
         preferred_alloy: form.preferredAlloy,
+        preferred_shape: form.shape,
+        geometry_type: form.shape,
         candidate_limit: 3,
       };
 
@@ -329,11 +332,34 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                 className="bg-slate-700 border-slate-600 text-white"
               />
             </div>
+            <div>
+              <Label className="text-slate-300" htmlFor="suggest-shape">
+                Fin Shape
+              </Label>
+              <Select
+                value={form.shape}
+                onValueChange={(value) =>
+                  setForm((current) => ({ ...current, shape: value }))
+                }
+              >
+                <SelectTrigger
+                  id="suggest-shape"
+                  className="bg-slate-700 border-slate-600 text-white"
+                >
+                  <SelectValue placeholder="Choose a fin shape" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Rectangular">Rectangular</SelectItem>
+                  <SelectItem value="Triangular">Triangular</SelectItem>
+                  <SelectItem value="Trapezoidal">Trapezoidal</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-slate-300">Airflow</Label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.35fr] sm:items-stretch">
+            <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/30 p-3">
+              <Label className="text-slate-300">CFD Inlet</Label>
               <Select
                 value={form.airflowType}
                 onValueChange={(value) =>
@@ -349,10 +375,14 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                   <SelectItem value="Natural">Natural</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-400">
+                Pick the inlet condition from CFD before setting the design
+                velocity.
+              </p>
             </div>
-            <div>
+            <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/30 p-3 h-full">
               <Label className="text-slate-300" htmlFor="suggest-velocity">
-                Velocity (m/s)
+                Inlet Velocity from CFD (m/s)
               </Label>
               <Input
                 id="suggest-velocity"
@@ -364,6 +394,10 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                 }
                 className="bg-slate-700 border-slate-600 text-white"
               />
+              <p className="text-xs text-slate-400">
+                Use the CFD inlet velocity here so the synthesizer matches the
+                airflow condition you want to design for.
+              </p>
             </div>
           </div>
 
