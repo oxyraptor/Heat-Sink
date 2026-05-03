@@ -100,13 +100,33 @@ interface RecommendResult {
   valid?: boolean;
   geometry?: string;
   alloy?: string;
+  number_of_fins?: number;
   parameters?: {
+    N?: number;
     n?: number;
+    H?: number;
     h?: number;
     s?: number;
+    t_base?: number;
+    tb?: number;
     type?: string;
     t_tip?: number;
     taper_angle?: number;
+  };
+  parameters_mm?: {
+    N?: number;
+    H?: number;
+    s?: number;
+    t_base?: number;
+    t_tip?: number;
+  };
+  temperature?: number;
+  thermal_resistance?: number;
+  mass?: number;
+  alloy_properties?: {
+    thermal_conductivity: number;
+    density: number;
+    cost_per_kg: number;
   };
 }
 
@@ -138,6 +158,28 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showIterations, setShowIterations] = useState(false);
+  const [visibleIterationCount, setVisibleIterationCount] = useState(20);
+
+  const postToFirstAvailableBaseUrl = async (
+    path: string,
+    payload: unknown,
+    signal: AbortSignal,
+  ): Promise<Response | null> => {
+    for (const baseUrl of apiBaseUrls) {
+      try {
+        const response = await fetch(`${baseUrl}${path}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal,
+        });
+        return response;
+      } catch {
+        // Continue trying next backend URL.
+      }
+    }
+    return null;
+  };
 
   const handleMotorChange = (field: keyof MotorParams, value: any) => {
     setMotorData((prev) => ({ ...prev, [field]: value }));
@@ -157,44 +199,31 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
       const controller = new AbortController();
       const timeoutId = window.setTimeout(() => controller.abort(), 300000);
 
+      // CFD optimization removed; send only inlet_velocity
       const payload = {
-        motor: motorData,
-        drag_max: cfdParams.dragMax,
-        pressure_drop_max: cfdParams.pressureDropMax,
-        velocity_uniformity_min: cfdParams.velocityUniformityMin,
         inlet_velocity: cfdParams.inletVelocity,
-        max_iterations: cfdParams.maxIterations,
-        allow_separation: cfdParams.allowSeparation,
       };
 
-      let response: Response | null = null;
-
-      for (const baseUrl of apiBaseUrls) {
-        try {
-          response = await fetch(`${baseUrl}/cfd-optimize/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-          });
-          if (response?.ok) break;
-        } catch (err) {
-          // Continue to next URL
-        }
-      }
-
-      window.clearTimeout(timeoutId);
-
-      if (!response?.ok) {
-        throw new Error("CFD optimization failed");
-      }
-
-      const data = await response.json();
-      setResults(data);
-      setShowIterations(true);
+      const motorDiameterM = motorData.motor_diameter / 1000; // mm → m
+      const motorLengthM = motorData.motor_length / 1000;     // mm → m
+      // Derive heat-sink footprint from motor geometry.
+      // For a cylindrical motor the casing wraps the circumference, so we use
+      // the diameter as both casing width and the motor length as casing length.
+      const casingWidth = motorDiameterM;
+      const casingLength = motorLengthM;
 
       const recommendPayload = {
-        motor: motorData,
+        motor: {
+          motor_type: motorData.motor_type,
+          rated_power: motorData.rated_power,
+          rated_voltage: motorData.rated_voltage,
+          rated_current: motorData.rated_current,
+          max_temp: motorData.max_temp,
+          motor_diameter: motorDiameterM,
+          motor_length: motorLengthM,
+          casing_width: casingWidth,
+          casing_length: casingLength,
+        },
         environment: {
           ambient_temp: 25,
           airflow_type: "Forced",
@@ -208,24 +237,41 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
         preferred_alloy: null,
       };
 
-      for (const baseUrl of apiBaseUrls) {
-        try {
-          const recommendResponse = await fetch(`${baseUrl}/recommend/`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(recommendPayload),
-            signal: controller.signal,
-          });
+      const [cfdResponse, recommendResponse] = await Promise.all([
+        postToFirstAvailableBaseUrl(
+          "/cfd-optimize/",
+          payload,
+          controller.signal,
+        ),
+        postToFirstAvailableBaseUrl(
+          "/recommend/",
+          recommendPayload,
+          controller.signal,
+        ),
+      ]);
 
-          if (recommendResponse.ok) {
-            const recommendData =
-              (await recommendResponse.json()) as RecommendResult;
-            setRecommendResults(recommendData);
-            break;
-          }
-        } catch {
-          // Keep CFD output visible even if recommend fails.
-        }
+      window.clearTimeout(timeoutId);
+
+      if (!cfdResponse) {
+        throw new Error(
+          "Could not reach the backend API. Please ensure the backend server is running.",
+        );
+      }
+      if (!cfdResponse.ok) {
+        const errorData = await cfdResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.detail || `Request failed (${cfdResponse.status})`,
+        );
+      }
+
+      const data = await cfdResponse.json();
+      setResults(data as unknown as CFDResult);
+      setShowIterations(false);
+
+      if (recommendResponse) {
+        const recommendData =
+          (await recommendResponse.json()) as RecommendResult;
+        setRecommendResults(recommendData);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -596,23 +642,33 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
                           ? "Trapezoidal"
                           : "Rectangular");
                       const finHeightMm =
-                        recommendResults?.parameters?.h !== undefined
-                          ? recommendResults.parameters.h * 1000
-                          : ((finalDesignParams.height ?? 0) as number) * 1000;
+                        recommendResults?.parameters_mm?.H !== undefined
+                          ? recommendResults.parameters_mm.H
+                          : recommendResults?.parameters?.h !== undefined
+                            ? recommendResults.parameters.h * 1000
+                            : recommendResults?.parameters?.H !== undefined
+                              ? recommendResults.parameters.H * 1000
+                              : ((finalDesignParams.height ?? 0) as number) *
+                                1000;
                       const finSpacingMm =
-                        recommendResults?.parameters?.s !== undefined
-                          ? recommendResults.parameters.s * 1000
-                          : finalDesignParams.s !== undefined
-                            ? ((finalDesignParams.s ?? 0) as number) * 1000
-                            : ((finalDesignParams.inlet_size ?? 0) as number) *
-                              1000;
+                        recommendResults?.parameters_mm?.s !== undefined
+                          ? recommendResults.parameters_mm.s
+                          : recommendResults?.parameters?.s !== undefined
+                            ? recommendResults.parameters.s * 1000
+                            : finalDesignParams.s !== undefined
+                              ? ((finalDesignParams.s ?? 0) as number) * 1000
+                              : ((finalDesignParams.inlet_size ??
+                                  0) as number) * 1000;
                       const tipThicknessMm =
-                        recommendResults?.parameters?.t_tip !== undefined
-                          ? recommendResults.parameters.t_tip * 1000
-                          : finalDesignParams.t_tip !== undefined
-                            ? ((finalDesignParams.t_tip ?? 0) as number) * 1000
-                            : ((finalDesignParams.edge_radius ?? 0) as number) *
-                              1000;
+                        recommendResults?.parameters_mm?.t_tip !== undefined
+                          ? recommendResults.parameters_mm.t_tip
+                          : recommendResults?.parameters?.t_tip !== undefined
+                            ? recommendResults.parameters.t_tip * 1000
+                            : finalDesignParams.t_tip !== undefined
+                              ? ((finalDesignParams.t_tip ?? 0) as number) *
+                                1000
+                              : ((finalDesignParams.edge_radius ??
+                                  0) as number) * 1000;
                       const taperAngle =
                         recommendResults?.parameters?.taper_angle !== undefined
                           ? recommendResults.parameters.taper_angle
@@ -620,11 +676,15 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
                             ? ((finalDesignParams.taper_angle ?? 0) as number)
                             : ((finalDesignParams.angle_deg ?? 0) as number);
                       const numberOfFins =
-                        recommendResults?.parameters?.n !== undefined
-                          ? recommendResults.parameters.n
-                          : finalDesignParams.n_fins !== undefined
-                            ? (finalDesignParams.n_fins as number)
-                            : null;
+                        recommendResults?.number_of_fins !== undefined
+                          ? recommendResults.number_of_fins
+                          : recommendResults?.parameters?.N !== undefined
+                            ? recommendResults.parameters.N
+                            : recommendResults?.parameters?.n !== undefined
+                              ? recommendResults.parameters.n
+                              : finalDesignParams.n_fins !== undefined
+                                ? (finalDesignParams.n_fins as number)
+                                : null;
                       const alloy =
                         recommendResults?.alloy ||
                         finalDesignParams.alloy ||
@@ -756,27 +816,44 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
 
                         {showIterations && (
                           <div className="mt-3 max-h-64 overflow-y-auto overflow-x-hidden space-y-2">
-                            {results.iterations.map((iter) => (
-                              <div
-                                key={iter.k}
-                                className="bg-slate-700 p-2 rounded text-sm"
-                              >
-                                <div className="flex justify-between">
-                                  <span className="text-white">
-                                    Iteration {iter.k}
-                                  </span>
-                                  {iter.validation.pass ? (
-                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                  ) : (
-                                    <AlertCircle className="w-4 h-4 text-red-500" />
-                                  )}
+                            {results.iterations
+                              .slice(0, visibleIterationCount)
+                              .map((iter) => (
+                                <div
+                                  key={iter.k}
+                                  className="bg-slate-700 p-2 rounded text-sm"
+                                >
+                                  <div className="flex justify-between">
+                                    <span className="text-white">
+                                      Iteration {iter.k}
+                                    </span>
+                                    {iter.validation.pass ? (
+                                      <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                    ) : (
+                                      <AlertCircle className="w-4 h-4 text-red-500" />
+                                    )}
+                                  </div>
+                                  <p className="text-slate-400 text-xs">
+                                    Drag:{" "}
+                                    {iter.cfd_results.drag_coefficient.toFixed(
+                                      3,
+                                    )}
+                                  </p>
                                 </div>
-                                <p className="text-slate-400 text-xs">
-                                  Drag:{" "}
-                                  {iter.cfd_results.drag_coefficient.toFixed(3)}
-                                </p>
-                              </div>
-                            ))}
+                              ))}
+
+                            {results.iterations.length >
+                              visibleIterationCount && (
+                              <Button
+                                variant="outline"
+                                className="w-full"
+                                onClick={() =>
+                                  setVisibleIterationCount((prev) => prev + 20)
+                                }
+                              >
+                                Load More Iterations
+                              </Button>
+                            )}
                           </div>
                         )}
                       </div>

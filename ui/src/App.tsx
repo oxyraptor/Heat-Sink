@@ -11,14 +11,6 @@ import {
   CardTitle,
 } from "./components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./components/ui/tabs";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./components/ui/select";
-import { Slider } from "./components/ui/slider";
 import { Separator } from "./components/ui/separator";
 import {
   Target,
@@ -26,9 +18,11 @@ import {
   Sparkles,
   TrendingUp,
   BarChart3,
+  Shapes,
 } from "lucide-react";
 import { CFDOptimization } from "./components/CFDOptimization";
 import { UnifiedOptimization } from "./components/UnifiedOptimization";
+import { DesignSuggestion } from "./components/DesignSuggestion";
 
 const normalizeBaseUrl = (url: string): string => url.replace(/\/+$/, "");
 
@@ -37,7 +31,7 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as
   | undefined;
 const API_BASE_URLS = configuredBaseUrl
   ? [normalizeBaseUrl(configuredBaseUrl)]
-  : ["http://localhost:8001", "http://127.0.0.1:8001", "http://localhost:8000"];
+  : ["/api"];
 
 // Fields to exclude from results display
 const EXCLUDED_FIELDS = [
@@ -152,13 +146,13 @@ function App() {
     motor_length: 0.1,
   });
 
-  const [environmentData, setEnvironmentData] = useState<EnvironmentParams>({
+  const [environmentData] = useState<EnvironmentParams>({
     ambient_temp: 25,
     airflow_type: "Forced",
     air_velocity: 5.0,
   });
 
-  const [constraintData, setConstraintData] = useState<ConstraintParams>({
+  const [constraintData] = useState<ConstraintParams>({
     max_height: 50,
     min_fin_thickness: 2,
     max_weight: null,
@@ -170,20 +164,6 @@ function App() {
 
   const handleMotorChange = (field: keyof MotorParams, value: any) => {
     setMotorData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleEnvironmentChange = (
-    field: keyof EnvironmentParams,
-    value: any,
-  ) => {
-    setEnvironmentData((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleConstraintChange = (
-    field: keyof ConstraintParams,
-    value: any,
-  ) => {
-    setConstraintData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleAnalyze = async () => {
@@ -295,6 +275,10 @@ function App() {
             <TabsTrigger value="motor" className="gap-2">
               <Target className="w-4 h-4" />
               Heat Sink Optimizer
+            </TabsTrigger>
+            <TabsTrigger value="design" className="gap-2">
+              <Shapes className="w-4 h-4" />
+              Design Suggestion
             </TabsTrigger>
             <TabsTrigger value="cfd" className="gap-2">
               <BarChart3 className="w-4 h-4" />
@@ -510,12 +494,12 @@ function App() {
                         <CardContent>
                           <div className="space-y-4">
                             {Object.entries(filterResults(results)).map(
-                              ([key, value]: [string, any], idx) => (
+                              ([key, value]: [string, any]) => (
                                 <motion.div
                                   key={key}
                                   initial={{ opacity: 0, y: 10 }}
                                   animate={{ opacity: 1, y: 0 }}
-                                  transition={{ delay: idx * 0.1 }}
+                                  transition={{ duration: 0.2 }}
                                   className="p-4 bg-slate-700 rounded-lg border border-slate-600"
                                 >
                                   <h3 className="font-semibold text-white mb-2 capitalize">
@@ -573,6 +557,10 @@ function App() {
                 </AnimatePresence>
               </motion.div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="design">
+            <DesignSuggestion apiBaseUrls={API_BASE_URLS} />
           </TabsContent>
 
           {/* CFD Optimization Tab */}
