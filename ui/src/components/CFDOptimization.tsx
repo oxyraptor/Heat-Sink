@@ -56,8 +56,8 @@ export function CFDOptimization({ apiBaseUrls }: CFDOptimizationProps) {
   };
 
   return (
-    <div>
-      <Card className="bg-slate-800 border-slate-700 shadow-2xl">
+    <div className="w-full">
+      <Card className="bg-slate-800 border-slate-700 shadow-2xl w-full">
         <CardHeader>
           <CardTitle className="text-white">Inlet Velocity</CardTitle>
         </CardHeader>

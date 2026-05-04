@@ -160,8 +160,18 @@ class HeatSinkViewSet(viewsets.ViewSet):
             target_alloy = validated_data.get('preferred_alloy') or "6063-T5"
 
             optimizer = DesignOptimizer(motor_dict, env_dict, const_dict)
-            # Honor explicit geometry_type if provided by the frontend
-            geometry_type = validated_data.get('geometry_type')
+            # Resolve preferred shape: prefer `preferred_shape`, fallback to legacy `geometry_type`.
+            preferred = validated_data.get('preferred_shape')
+            legacy = validated_data.get('geometry_type')
+            # Use preferred if present; otherwise fallback to legacy clients
+            selected_geom = preferred or legacy
+            # Normalize to internal geometry family names (pass-through expected values)
+            if selected_geom:
+                # Only accept recognized geometry families; serializer already restricts choices.
+                geometry_type = selected_geom
+            else:
+                geometry_type = None
+
             result = optimizer.suggest_design(
                 material_name=target_alloy,
                 limit=candidate_limit,

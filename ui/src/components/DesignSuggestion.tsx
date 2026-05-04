@@ -94,6 +94,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
     preferredAlloy: "6063-T5",
   });
   const [result, setResult] = useState<DesignSuggestionResult | null>(null);
+  const [requestedShape, setRequestedShape] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -136,6 +137,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
     setLoading(true);
     setError(null);
     setResult(null);
+    setRequestedShape(form.shape);
 
     try {
       const controller = new AbortController();
@@ -164,8 +166,8 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           max_weight: null,
         },
         preferred_alloy: form.preferredAlloy,
+        // API canonical field: preferred_shape (enforced if provided)
         preferred_shape: form.shape,
-        geometry_type: form.shape,
         candidate_limit: 3,
       };
 
@@ -201,7 +203,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
   const primaryCandidate = result?.ranked_candidates?.[0] ?? null;
 
   return (
-    <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-8">
+    <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-5 lg:gap-8">
       <Card className="bg-slate-800 border-slate-700 shadow-2xl">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
@@ -213,7 +215,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-slate-300" htmlFor="suggest-power">
                 Power (W)
@@ -274,7 +276,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
 
           <Separator className="bg-slate-700" />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <Label className="text-slate-300" htmlFor="suggest-length">
                 Base Length (mm)
@@ -354,10 +356,13 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                   <SelectItem value="Trapezoidal">Trapezoidal</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-slate-400 mt-1">
+                This shape is enforced during optimization.
+              </p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.35fr] sm:items-stretch">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1.35fr] md:items-stretch">
             <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-900/30 p-3">
               <Label className="text-slate-300">CFD Inlet</Label>
               <Select
@@ -434,19 +439,25 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           >
             <Card className="bg-slate-800 border-slate-700 shadow-2xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
+                <CardTitle className="text-white flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  {titleCase(result.recommended_shape)} Proposal
+                  <span>
+                    {titleCase(requestedShape || result.recommended_shape)}{" "}
+                    Proposal
+                  </span>
                 </CardTitle>
                 <CardDescription className="text-slate-400">
+                  {requestedShape
+                    ? `Selected shape enforced: ${titleCase(requestedShape)}.`
+                    : "No shape was selected, so the backend ranked all families."}{" "}
                   {result.explanation}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-                <div className="min-h-[220px] rounded-lg border border-slate-600 bg-slate-900 p-5 flex items-end justify-center">
+              <CardContent className="grid grid-cols-1 gap-6 lg:grid-cols-[280px_1fr]">
+                <div className="min-h-[220px] rounded-lg border border-slate-600 bg-slate-900 p-4 sm:p-5 flex items-end justify-center">
                   <div
                     className="w-full max-w-[220px] border-b-8 border-cyan-500 flex items-end justify-around"
-                    style={{ height: 170 }}
+                    style={{ height: 170, maxWidth: "100%" }}
                   >
                     {Array.from({
                       length: Math.min(result.geometry.fin_count, 18),
@@ -472,7 +483,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <Metric
                     icon={<Thermometer className="w-4 h-4" />}
                     label="Predicted Temp"
@@ -557,7 +568,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="h-full min-h-[420px] flex items-center justify-center"
+            className="h-full min-h-[320px] sm:min-h-[420px] flex items-center justify-center"
           >
             <Card className="bg-slate-800 border-slate-700 shadow-2xl w-full">
               <CardContent className="p-12 text-center text-slate-500 space-y-3">
