@@ -20,7 +20,23 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Add remote using secret token from GitHub Secrets
-          git remote remove huggingface || true
+          if [ -z "$HF_TOKEN" ]; then
+            echo "HF_TOKEN secret is not set"
+            exit 1
+          fi
+
+          # Build a clean sync branch with only the current tree (no history),
+          # then exclude large/binary artifacts that Spaces rejects.
+          git switch --orphan hf-space-sync
+          git reset --hard main
+
+          git rm --cached --ignore-unmatch backend/ml_models/*.pkl
+          git rm --cached --ignore-unmatch docs/PDF/*.pdf
+
+          git add -A
+          git commit -m "chore: sync to HF Space without large binary artifacts"
+
+          # Recreate remote cleanly and force push the clean branch as Space main.
+          git remote get-url huggingface >/dev/null 2>&1 && git remote remove huggingface
           git remote add huggingface https://Oxyraptor:$HF_TOKEN@huggingface.co/spaces/Oxyraptor/Heat-sink-backend
-          git push --force huggingface main
+          git push --force huggingface hf-space-sync:main
