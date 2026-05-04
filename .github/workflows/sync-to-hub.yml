@@ -25,6 +25,13 @@ jobs:
             exit 1
           fi
 
+          git checkout main
+          git reset --hard
+          git clean -fdx
+
+          # Remove existing sync branch if present, then create a clean orphan branch.
+          git branch -D hf-space-sync 2>/dev/null || true
+
           # Build a clean sync branch with only the current tree (no history),
           # then exclude large/binary artifacts that Spaces rejects.
           git switch --orphan hf-space-sync
