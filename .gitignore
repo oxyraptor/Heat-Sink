@@ -42,8 +42,8 @@ backend/media/
 staticfiles/
 backend/staticfiles/
 
-# ML Models (keep in version control for deployment)
-# backend/ml_models/*.pkl
+# ML Models (do not sync binary models in repository)
+backend/ml_models/*.pkl
 # backend/ml_models/*.joblib
 
 # Training & Data Generation (not needed for production)
