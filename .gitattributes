@@ -35,3 +35,4 @@ saved_model/**/* filter=lfs diff=lfs merge=lfs -text
 *tfevents* filter=lfs diff=lfs merge=lfs -text
 backend/ml_models/thermal_model.pkl filter=lfs diff=lfs merge=lfs -text
 docs/PDF/l03055d.pdf filter=lfs diff=lfs merge=lfs -text
+backend/ml_models/*.pkl filter=lfs diff=lfs merge=lfs -text
