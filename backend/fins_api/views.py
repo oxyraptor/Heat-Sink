@@ -4,6 +4,7 @@ DRF Views for Heat Sink Optimization API
 
 import os
 import joblib
+from huggingface_hub import hf_hub_download
 import pandas as pd
 import numpy as np
 from rest_framework import viewsets, status
@@ -44,14 +45,40 @@ ML_MODELS_DIR = os.path.join(BASE_DIR, 'ml_models')
 # Load ML Models
 logger = get_api_logger()
 
+# Helper: try local load, otherwise download inverse model from HF model repo
+ml_model = None
+inverse_model = None
+HF_MODEL_REPO = "Oxyraptor/heat-sink-inverse-model"
+HF_FILENAME = "inverse_model.pkl"
+HF_TOKEN = os.environ.get("HF_TOKEN")
+
 try:
-    ml_model = joblib.load(os.path.join(ML_MODELS_DIR, "thermal_model.pkl"))
-    inverse_model = joblib.load(os.path.join(ML_MODELS_DIR, "inverse_model.pkl"))
-    logger.success("ML Models loaded into memory successfully")
+    # thermal model: prefer local file
+    thermal_path = os.path.join(ML_MODELS_DIR, "thermal_model.pkl")
+    if os.path.exists(thermal_path):
+        ml_model = joblib.load(thermal_path)
+
+    # inverse model: try local first, then HF download
+    inverse_local = os.path.join(ML_MODELS_DIR, "inverse_model.pkl")
+    if os.path.exists(inverse_local):
+        inverse_model = joblib.load(inverse_local)
+    else:
+        if HF_TOKEN:
+            try:
+                downloaded = hf_hub_download(repo_id=HF_MODEL_REPO, filename=HF_FILENAME, repo_type="model", token=HF_TOKEN)
+                inverse_model = joblib.load(downloaded)
+            except Exception as e:
+                inverse_model = None
+                logger.warning("Failed to download inverse model from Hugging Face", exception=e)
+
+    if ml_model is not None or inverse_model is not None:
+        logger.success("ML Models loaded into memory successfully")
+    else:
+        logger.warning("ML Models not available")
 except Exception as e:
     ml_model = None
     inverse_model = None
-    logger.warning(f"ML Models not available", exception=e)
+    logger.warning("ML Models not available", exception=e)
 
 
 class HeatSinkViewSet(viewsets.ViewSet):
