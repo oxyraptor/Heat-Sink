@@ -38,6 +38,7 @@ jobs:
           git reset --hard main
 
           git rm --cached --ignore-unmatch backend/ml_models/*.pkl
+          git rm --cached --ignore-unmatch backend/ml_models/inverse_model.pkl
           git rm --cached --ignore-unmatch docs/PDF/*.pdf
 
           git add -A
