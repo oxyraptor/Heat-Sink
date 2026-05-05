@@ -320,21 +320,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
               />
             </div>
             <div>
-              <Label className="text-slate-300" htmlFor="suggest-thickness">
-                Min Fin (mm)
-              </Label>
-              <Input
-                id="suggest-thickness"
-                type="number"
-                step="0.1"
-                value={form.minFinThickness}
-                onChange={(event) =>
-                  updateNumber("minFinThickness", event.target.value)
-                }
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
-            <div>
               <Label className="text-slate-300" htmlFor="suggest-shape">
                 Fin Shape
               </Label>
@@ -484,21 +469,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <Metric
-                    icon={<Thermometer className="w-4 h-4" />}
-                    label="Predicted Temp"
-                    value={`${result.predicted_temp.toFixed(1)} deg C`}
-                  />
-                  <Metric
-                    icon={<Factory className="w-4 h-4" />}
-                    label="Arrangement"
-                    value={titleCase(result.arrangement)}
-                  />
-                  <Metric
-                    icon={<GitCompare className="w-4 h-4" />}
-                    label="Thermal Score"
-                    value={pct(result.thermal_score)}
-                  />
                   <Metric
                     icon={<Ruler className="w-4 h-4" />}
                     label="Base"
