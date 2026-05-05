@@ -17,6 +17,9 @@ gunicorn>=21.2.0
 # Hugging Face Hub for runtime model download
 huggingface_hub>=1.13.0
 
+# HTTP client used by verification scripts
+requests>=2.31.0
+
 # Development dependencies
 pytest>=7.4.0
 pytest-django>=4.5.0

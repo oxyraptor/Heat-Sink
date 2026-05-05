@@ -205,7 +205,7 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
       };
 
       const motorDiameterM = motorData.motor_diameter / 1000; // mm → m
-      const motorLengthM = motorData.motor_length / 1000;     // mm → m
+      const motorLengthM = motorData.motor_length / 1000; // mm → m
       // Derive heat-sink footprint from motor geometry.
       // For a cylindrical motor the casing wraps the circumference, so we use
       // the diameter as both casing width and the motor length as casing length.
@@ -657,8 +657,7 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
                             ? recommendResults.parameters.s * 1000
                             : finalDesignParams.s !== undefined
                               ? ((finalDesignParams.s ?? 0) as number) * 1000
-                              : ((finalDesignParams.inlet_size ??
-                                  0) as number) * 1000;
+                              : 0;
                       const tipThicknessMm =
                         recommendResults?.parameters_mm?.t_tip !== undefined
                           ? recommendResults.parameters_mm.t_tip
@@ -667,8 +666,7 @@ export function UnifiedOptimization({ apiBaseUrls }: UnifiedOptimizationProps) {
                             : finalDesignParams.t_tip !== undefined
                               ? ((finalDesignParams.t_tip ?? 0) as number) *
                                 1000
-                              : ((finalDesignParams.edge_radius ??
-                                  0) as number) * 1000;
+                              : 0;
                       const taperAngle =
                         recommendResults?.parameters?.taper_angle !== undefined
                           ? recommendResults.parameters.taper_angle

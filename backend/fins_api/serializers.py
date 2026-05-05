@@ -75,16 +75,7 @@ class MLRequestSerializer(serializers.Serializer):
     Q_heat = serializers.FloatField(required=True)
     width = serializers.FloatField(required=True)
     length = serializers.FloatField(required=True)
-    ambient = serializers.FloatField(required=True)
-    velocity = serializers.FloatField(required=True)
-    N = serializers.IntegerField(required=True)
-    H = serializers.FloatField(required=True)
-    t_base = serializers.FloatField(required=True)
-    geom_type = serializers.ChoiceField(
-        choices=['Rectangular', 'Triangular'],
-        required=True,
-        help_text="Geometry type"
-    )
+    H = serializers.FloatField(required=True, help_text="Maximum height constraint in meters")
 
 
 class MaterialPropertiesSerializer(serializers.Serializer):
@@ -140,6 +131,8 @@ class DesignCandidateSerializer(serializers.Serializer):
     explanation = serializers.CharField()
     geometry = DesignGeometrySerializer()
     validation = serializers.DictField()
+    parameters = serializers.DictField(required=False)
+    parameters_mm = serializers.DictField(required=False)
 
 
 class DesignSuggestionResponseSerializer(serializers.Serializer):

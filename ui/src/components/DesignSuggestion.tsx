@@ -202,6 +202,37 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
 
   const primaryCandidate = result?.ranked_candidates?.[0] ?? null;
 
+  const getCandidateParamMm = (
+    candidate: DesignCandidate | null,
+    key: string,
+  ) => {
+    // Prefer candidate.parameters_mm, then candidate.parameters (meters -> mm), then candidate.geometry values
+    try {
+      if (!candidate) return undefined;
+      const pm = (candidate as any).parameters_mm;
+      if (pm && pm[key] != null) return Number(pm[key]);
+      const p = (candidate as any).parameters;
+      if (p && p[key] != null) return Number(p[key]) * 1000.0;
+      // Fallback to geometry fields (which are in meters)
+      const geom = candidate.geometry as any;
+      if (geom) {
+        if (key === "t_base" || key === "fin_thickness") {
+          if (geom.fin_thickness != null)
+            return Number(geom.fin_thickness) * 1000.0;
+        }
+        if (key === "H" || key === "fin_height") {
+          if (geom.fin_height != null) return Number(geom.fin_height) * 1000.0;
+        }
+        if (key === "s" || key === "fin_spacing") {
+          if (geom.fin_spacing != null)
+            return Number(geom.fin_spacing) * 1000.0;
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return undefined;
+  };
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[420px_1fr] gap-5 lg:gap-8">
       <Card className="bg-slate-800 border-slate-700 shadow-2xl">
@@ -307,7 +338,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
             </div>
             <div>
               <Label className="text-slate-300" htmlFor="suggest-height">
-                Max Height (mm)
+                Height (mm)
               </Label>
               <Input
                 id="suggest-height"
@@ -477,12 +508,30 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                   <Metric
                     icon={<Ruler className="w-4 h-4" />}
                     label="Fin Height"
-                    value={mm(result.geometry.fin_height)}
+                    value={(() => {
+                      const v =
+                        getCandidateParamMm(primaryCandidate, "H") ??
+                        getCandidateParamMm(primaryCandidate, "fin_height");
+                      return v != null
+                        ? `${v.toFixed(1)} mm`
+                        : mm(result.geometry.fin_height);
+                    })()}
                   />
                   <Metric
                     icon={<Ruler className="w-4 h-4" />}
                     label="Spacing / Pitch"
-                    value={`${mm(result.geometry.fin_spacing)} / ${mm(result.geometry.fin_pitch)}`}
+                    value={(() => {
+                      const s =
+                        getCandidateParamMm(primaryCandidate, "s") ??
+                        getCandidateParamMm(primaryCandidate, "fin_spacing");
+                      const t =
+                        getCandidateParamMm(primaryCandidate, "t_base") ??
+                        getCandidateParamMm(primaryCandidate, "fin_thickness");
+                      if (s != null && t != null) {
+                        return `${s.toFixed(1)} mm / ${(s + t).toFixed(1)} mm`;
+                      }
+                      return `${mm(result.geometry.fin_spacing)} / ${mm(result.geometry.fin_pitch)}`;
+                    })()}
                   />
                   <Metric
                     icon={<Shapes className="w-4 h-4" />}
@@ -492,7 +541,14 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                   <Metric
                     icon={<Ruler className="w-4 h-4" />}
                     label="Thickness"
-                    value={mm(result.geometry.fin_thickness)}
+                    value={(() => {
+                      const v =
+                        getCandidateParamMm(primaryCandidate, "t_base") ??
+                        getCandidateParamMm(primaryCandidate, "fin_thickness");
+                      return v != null
+                        ? `${v.toFixed(1)} mm`
+                        : mm(result.geometry.fin_thickness);
+                    })()}
                   />
                   <Metric
                     icon={<CheckCircle2 className="w-4 h-4" />}

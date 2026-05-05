@@ -167,18 +167,37 @@ class AdvancedThermalModel:
         self.sigma = 5.67e-8 
 
     def get_heat_load(self):
-        eff = self.motor.get('efficiency')
+        """
+        Compute the heat that must be dissipated by the heat sink.
+
+        Priority order:
+          1. Explicit efficiency  → Q = P_rated * (1/eff - 1)   (heat = input - output)
+          2. V and I provided     → treat V*I as *electrical input power*;
+                                    assume 85 % motor efficiency if none given.
+                                    Q = V*I * (1 - 0.85)  =  V*I * 0.15
+          3. Only rated_power     → assume 85 % efficiency → Q = P_rated * (1/0.85 - 1)
+
+        The old formula  max(0, V*I - P_rated)  was wrong: for a well-sized motor
+        V*I ≈ P_rated so the result was ≈ 0 W, making every thermal simulation
+        trivially cold and causing the optimizer to always pick minimum-height fins.
+        """
         p_rated = self.motor.get('rated_power', 1000.0)
-        
-        if eff:
-            return max(0, (p_rated / eff) - p_rated)
-        
+        eff = self.motor.get('efficiency')
+
+        if eff and eff > 0:
+            # Known efficiency: input power = P_rated / eff, heat = input - output
+            return max(0.0, p_rated * (1.0 / eff - 1.0))
+
         v = self.motor.get('rated_voltage')
         i = self.motor.get('rated_current')
-        if v and i:
-            return max(0, (v * i) - p_rated)
-            
-        return (p_rated / 0.85) - p_rated
+        if v and i and v > 0 and i > 0:
+            # V*I is the electrical input power; assume 85 % conversion efficiency.
+            assumed_eff = 0.85
+            p_input = v * i
+            return max(0.0, p_input * (1.0 - assumed_eff))
+
+        # Fallback: only rated_power known → assume 85 % efficiency
+        return max(0.0, p_rated * (1.0 / 0.85 - 1.0))
 
     def solve_equilibrium(self, fin_geom: FinGeometry, mat_k, t_base_plate):
         Q_total = self.get_heat_load()
@@ -299,6 +318,9 @@ class DesignOptimizer:
         vol_fins = geom.volume()
         mass = (vol_base + vol_fins) * mat['density']
         
+        # Get geometry details which include t_tip and taper_angle
+        geom_details = geom.get_details()
+        
         return {
             'valid': sim_res['valid'],
             'temperature': sim_res['T_surface'],
@@ -309,30 +331,89 @@ class DesignOptimizer:
             'rad_pct': sim_res['rad_pct'],
             'parameters': {
                 'N': geom.N, 'H': geom.H, 't_base': geom.t_base, 'tb': x[3], 's': geom.s,
-                **geom.get_details()
+                **geom_details
+            },
+            'parameters_mm': {
+                'N': geom.N,
+                'H': geom.H * 1000,  # Convert to mm
+                't_base': geom.t_base * 1000,  # Convert to mm
+                'tb': x[3] * 1000,  # Convert to mm
+                's': geom.s * 1000,  # Convert to mm
+                't_tip': geom_details.get('t_tip', 0) * 1000,  # Convert to mm
+                'taper_angle': geom_details.get('taper_angle', 0)
             },
             'alloy': mat_name
         }
 
     def objective_function(self, x, geom_type):
+        """
+        Multi-objective cost: prioritize meeting temperature constraint,
+        then minimize thermal resistance, with preference for robust designs.
+
+        Goal: Find designs that stay well below max_temp, with good thermal
+        performance, using adequate fin thickness for manufacturability.
+        """
         res = self.evaluate_full(x, geom_type)
-        if not res['valid']: return 1e6
-        
+        if not res['valid']:
+            return 1e6
+
         max_temp = self.motor.get('max_temp', 100.0)
         max_h = self.constraints.get('max_height', 0.1)
         min_t = self.constraints.get('min_fin_thickness', 0.001)
-        
-        if x[1] > max_h: return 1e6
-        if x[2] < min_t: return 1e6
+
+        if x[1] > max_h:
+            return 1e6
+        if x[2] < min_t:
+            return 1e6
+
+        N = x[0]
+        H = x[1]
+        t_base = x[2]
+        tb = x[3]
         
         T = res['temperature']
+        R = res['thermal_resistance']
         M = res['mass']
-        
-        penalty = 0
+        ambient = self.env.get('ambient_temp', 25.0)
+        delta_T_max = max_temp - ambient
+
+        # --- PRIMARY: Temperature constraint ---
+        # Must stay below max_temp. Penalize heavily for violations.
         if T > max_temp:
-            penalty = (T - max_temp)**2 * 100 
-            
-        return M * 10.0 + penalty
+            excess_ratio = (T - max_temp) / delta_T_max
+            penalty = excess_ratio ** 2 * 1000.0
+            return penalty
+        
+        # Temperature margin: prefer designs with good headroom
+        temp_margin = (max_temp - T) / delta_T_max
+        temp_cost = 1.0 - (temp_margin ** 0.5) * 0.5  # Range [0.5, 1.0]
+
+        # --- SECONDARY: Thermal Resistance ---
+        R_ref = 1.0
+        R_norm = min(R / R_ref, 10.0)  # Cap at 10 to prevent dominance
+
+        # --- Fin Thickness Encouragement ---
+        # Strongly prefer thicker fins for manufacturability 
+        # Target: 3-5 mm; Strong penalty if < 2.5 mm
+        t_base_mm = t_base * 1000
+        if t_base_mm < 2.0:
+            # Very thin fins: very strong penalty
+            thickness_cost = (2.5 - t_base_mm) ** 2 * 20.0
+        elif t_base_mm < 3.5:
+            # Thin but acceptable: penalty
+            thickness_cost = (3.5 - t_base_mm) * 1.0
+        else:
+            # Good thickness: small reward
+            thickness_cost = max(0.0, (6.0 - t_base_mm) * 0.05)
+
+        # --- Combine all objectives ---
+        # 40% temperature, 45% fin thickness (strongly preferred), 15% thermal resistance
+        w_T = 0.40
+        w_Thick = 0.45
+        w_R = 0.15
+
+        cost = w_T * temp_cost + w_Thick * thickness_cost + w_R * R_norm
+        return cost
 
     def calculate_sensitivity(self, x, geom_type):
         base_res = self.evaluate_full(x, geom_type)
@@ -373,11 +454,13 @@ class DesignOptimizer:
         min_t = self.constraints.get('min_fin_thickness', 0.001)
         t_max = self.motor.get('max_temp', 100.0)
         
+        # t_base upper bound: allow up to 50× minimum or 50 mm for exploration
+        t_base_upper = max(min_t * 50.0, 0.05)
         bounds = [
-            (5, 60),       # N
-            (0.01, max_h), # H
-            (min_t, 0.01), # t_base
-            (0.002, 0.015) # tb
+            (5, 60),                    # N
+            (0.01, max_h),              # H
+            (min_t, t_base_upper),      # t_base
+            (0.002, 0.015)              # tb
         ]
         
         for geom in geometries:
@@ -389,7 +472,9 @@ class DesignOptimizer:
                 maxiter=30,
                 popsize=10,
                 tol=0.01,
-                seed=42
+                # No fixed seed — let DE explore a different path for each
+                # unique combination of inputs so that height, thickness, and
+                # fin count can vary meaningfully with changing parameters.
             )
             
             # Evaluate final result with INTEGER N
@@ -428,10 +513,10 @@ class DesignOptimizer:
                     bounds,
                     args=(geom,),
                     strategy='best1bin',
-                    maxiter=30,
-                    popsize=10,
-                    tol=0.01,
-                    seed=42
+                    maxiter=50,  # more iterations in fallback to find a feasible design
+                    popsize=12,
+                    tol=0.005,
+                    # No fixed seed here either
                 )
                 x_final = res.x
                 x_final[0] = round(x_final[0])

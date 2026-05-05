@@ -13,9 +13,9 @@ const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL as
 const API_BASE_URLS = configuredBaseUrl
   ? [normalizeBaseUrl(configuredBaseUrl)]
   : [
-      "https://oxyraptor-heat-sink-backend.hf.space",
       "http://localhost:8001",
       "http://127.0.0.1:8001",
+      "https://oxyraptor-heat-sink-backend.hf.space",
     ];
 
 function App() {
