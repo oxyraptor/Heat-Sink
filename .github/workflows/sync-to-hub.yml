@@ -38,14 +38,14 @@ jobs:
           git checkout main -- .
 
           git rm -r --cached docs/PDF --ignore-unmatch
-          git rm -r --cached backend/ml_models --ignore-unmatch
+          # git rm -r --cached backend/ml_models --ignore-unmatch
           
           # Physically remove from disk so 'git add -A' doesn't pick them back up
           rm -rf docs/PDF
-          rm -rf backend/ml_models
+          # rm -rf backend/ml_models
           
           # Final sweep for any stray binaries
-          find . -type f -name "*.pkl" -delete
+          # find . -type f -name "*.pkl" -delete
           find . -type f -name "*.pdf" -delete
 
           git add -A

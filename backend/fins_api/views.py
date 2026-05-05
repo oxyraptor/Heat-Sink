@@ -45,40 +45,64 @@ ML_MODELS_DIR = os.path.join(BASE_DIR, 'ml_models')
 # Load ML Models
 logger = get_api_logger()
 
-# Helper: try local load, otherwise download inverse model from HF model repo
+# Helper: try local load, otherwise download from HF model repo
 ml_model = None
 inverse_model = None
+
 HF_MODEL_REPO = "Oxyraptor/heat-sink-inverse-model"
-HF_FILENAME = "inverse_model.pkl"
 HF_TOKEN = os.environ.get("HF_TOKEN")
 
+def load_or_download_model(filename, repo_id, token=None):
+    """
+    Attempts to load a model from the local ML_MODELS_DIR.
+    If missing or invalid, attempts to download it from Hugging Face Hub.
+    """
+    local_path = os.path.join(ML_MODELS_DIR, filename)
+    
+    # 1. Try local load
+    if os.path.exists(local_path):
+        try:
+            # Check if it's a real file and not an LFS pointer (very small text file)
+            if os.path.getsize(local_path) > 500:
+                return joblib.load(local_path)
+            else:
+                logger.warning(f"Local file {filename} appears to be an LFS pointer. Attempting download.")
+        except Exception as e:
+            logger.warning(f"Failed to load local model {filename}", exception=e)
+
+    # 2. Try HF Hub download
+    try:
+        if not token:
+            logger.info(f"No HF_TOKEN found. Attempting unauthenticated download for {filename}...")
+        
+        downloaded_path = hf_hub_download(
+            repo_id=repo_id, 
+            filename=filename, 
+            repo_type="model", 
+            token=token
+        )
+        return joblib.load(downloaded_path)
+    except Exception as e:
+        logger.warning(f"Failed to download/load {filename} from Hugging Face Hub", exception=e)
+        return None
+
 try:
-    # thermal model: prefer local file
-    thermal_path = os.path.join(ML_MODELS_DIR, "thermal_model.pkl")
-    if os.path.exists(thermal_path):
-        ml_model = joblib.load(thermal_path)
+    # Load or download thermal model
+    ml_model = load_or_download_model("thermal_model.pkl", HF_MODEL_REPO, HF_TOKEN)
+    
+    # Load or download inverse model
+    inverse_model = load_or_download_model("inverse_model.pkl", HF_MODEL_REPO, HF_TOKEN)
 
-    # inverse model: try local first, then HF download
-    inverse_local = os.path.join(ML_MODELS_DIR, "inverse_model.pkl")
-    if os.path.exists(inverse_local):
-        inverse_model = joblib.load(inverse_local)
+    if ml_model is not None and inverse_model is not None:
+        logger.success("All ML Models loaded successfully")
+    elif ml_model is not None or inverse_model is not None:
+        logger.warning(f"Partial ML Models loaded (Thermal: {'OK' if ml_model else 'Missing'}, Inverse: {'OK' if inverse_model else 'Missing'})")
     else:
-        if HF_TOKEN:
-            try:
-                downloaded = hf_hub_download(repo_id=HF_MODEL_REPO, filename=HF_FILENAME, repo_type="model", token=HF_TOKEN)
-                inverse_model = joblib.load(downloaded)
-            except Exception as e:
-                inverse_model = None
-                logger.warning("Failed to download inverse model from Hugging Face", exception=e)
-
-    if ml_model is not None or inverse_model is not None:
-        logger.success("ML Models loaded into memory successfully")
-    else:
-        logger.warning("ML Models not available")
+        logger.warning("ML Models not available (both Thermal and Inverse models failed to load)")
 except Exception as e:
     ml_model = None
     inverse_model = None
-    logger.warning("ML Models not available", exception=e)
+    logger.error("Critical error during ML model initialization", exception=e)
 
 
 class HeatSinkViewSet(viewsets.ViewSet):
