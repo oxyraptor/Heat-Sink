@@ -40,6 +40,12 @@ jobs:
           git rm --cached --ignore-unmatch backend/ml_models/*.pkl
           git rm --cached --ignore-unmatch backend/ml_models/inverse_model.pkl
           git rm --cached --ignore-unmatch docs/PDF/*.pdf
+          
+          # Physically remove from disk so 'git add -A' doesn't pick them back up
+          rm -rf backend/ml_models/*.pkl
+          rm -rf docs/PDF/*.pdf
+          find . -type f -name "*.pkl" -delete
+          find . -type f -name "*.pdf" -delete
 
           git add -A
           git commit -m "chore: sync to HF Space without large binary artifacts"
