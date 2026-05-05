@@ -37,13 +37,14 @@ jobs:
           git switch --orphan hf-space-sync
           git reset --hard main
 
-          git rm --cached --ignore-unmatch backend/ml_models/*.pkl
-          git rm --cached --ignore-unmatch backend/ml_models/inverse_model.pkl
-          git rm --cached --ignore-unmatch docs/PDF/*.pdf
+          git rm -r --cached docs/PDF --ignore-unmatch
+          git rm -r --cached backend/ml_models --ignore-unmatch
           
           # Physically remove from disk so 'git add -A' doesn't pick them back up
-          rm -rf backend/ml_models/*.pkl
-          rm -rf docs/PDF/*.pdf
+          rm -rf docs/PDF
+          rm -rf backend/ml_models
+          
+          # Final sweep for any stray binaries
           find . -type f -name "*.pkl" -delete
           find . -type f -name "*.pdf" -delete
 
