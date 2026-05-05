@@ -35,7 +35,7 @@ jobs:
           # Build a clean sync branch with only the current tree (no history),
           # then exclude large/binary artifacts that Spaces rejects.
           git switch --orphan hf-space-sync
-          git reset --hard main
+          git checkout main -- .
 
           git rm -r --cached docs/PDF --ignore-unmatch
           git rm -r --cached backend/ml_models --ignore-unmatch
