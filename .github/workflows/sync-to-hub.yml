@@ -47,4 +47,6 @@ jobs:
           # Recreate remote cleanly and force push the clean branch as Space main.
           git remote get-url huggingface >/dev/null 2>&1 && git remote remove huggingface
           git remote add huggingface https://Oxyraptor:$HF_TOKEN@huggingface.co/spaces/Oxyraptor/Heat-sink-backend
+          
+          git config lfs.allowincompletepush true
           git push --force huggingface hf-space-sync:main
