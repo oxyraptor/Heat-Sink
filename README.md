@@ -1,3 +1,13 @@
+---
+title: Heat-Sink Backend
+emoji: 🚀
+colorFrom: blue
+colorTo: purple
+sdk: docker
+app_file: app.py
+pinned: false
+---
+
 # Heat Sink Optimization System
 
 **Languages:** Python (69%), TypeScript (28%), CSS (1.8%), Other (0.7%)  
