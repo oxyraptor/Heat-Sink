@@ -324,7 +324,7 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
             </div>
             <div>
               <Label className="text-slate-300" htmlFor="suggest-width">
-                Base Width (mm)
+                Diameter (mm)
               </Label>
               <Input
                 id="suggest-width"
