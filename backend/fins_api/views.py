@@ -4,7 +4,6 @@ DRF Views for Heat Sink Optimization API
 
 import os
 import joblib
-from huggingface_hub import hf_hub_download
 import pandas as pd
 import numpy as np
 from rest_framework import viewsets, status
@@ -36,6 +35,11 @@ from core.cfd_closed_loop import (
 )
 from pathlib import Path
 import tempfile
+
+try:
+    from huggingface_hub import hf_hub_download
+except ImportError:
+    hf_hub_download = None
 
 
 # Get base directory
@@ -69,6 +73,12 @@ def load_or_download_model(filename, repo_id, token=None):
                 logger.warning(f"Local file {filename} appears to be an LFS pointer. Attempting download.")
         except Exception as e:
             logger.warning(f"Failed to load local model {filename}", exception=e)
+
+    if hf_hub_download is None:
+        logger.warning(
+            f"Hugging Face Hub client not installed. Skipping remote model download for {filename}."
+        )
+        return None
 
     # 2. Try HF Hub download
     try:

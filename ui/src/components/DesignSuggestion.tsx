@@ -85,7 +85,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
     maxTemp: 95,
     baseLength: 120,
     baseWidth: 80,
-    maxHeight: 55,
     minFinThickness: 1.2,
     shape: "Rectangular",
     ambientTemp: 25,
@@ -153,7 +152,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           motor_length: form.baseLength / 1000,
           casing_width: form.baseWidth / 1000,
           casing_length: form.baseLength / 1000,
-          casing_height: Math.max(form.maxHeight / 1000, 0.02),
         },
         environment: {
           ambient_temp: form.ambientTemp,
@@ -161,7 +159,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
           air_velocity: form.airVelocity,
         },
         constraints: {
-          max_height: form.maxHeight / 1000,
           min_fin_thickness: form.minFinThickness / 1000,
           max_weight: null,
         },
@@ -332,20 +329,6 @@ export function DesignSuggestion({ apiBaseUrls }: DesignSuggestionProps) {
                 value={form.baseWidth}
                 onChange={(event) =>
                   updateNumber("baseWidth", event.target.value)
-                }
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
-            <div>
-              <Label className="text-slate-300" htmlFor="suggest-height">
-                Height (mm)
-              </Label>
-              <Input
-                id="suggest-height"
-                type="number"
-                value={form.maxHeight}
-                onChange={(event) =>
-                  updateNumber("maxHeight", event.target.value)
                 }
                 className="bg-slate-700 border-slate-600 text-white"
               />

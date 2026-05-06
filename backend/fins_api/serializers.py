@@ -59,7 +59,7 @@ class DesignSuggestionRequestSerializer(RecommendationRequestSerializer):
         choices=['Rectangular', 'Triangular', 'Trapezoidal'],
         required=False,
         allow_null=True,
-        help_text='Preferred fin shape (optional) — enforced if provided; preferred over geometry_type for compatibility'
+        help_text='Preferred fin shape (optional) - enforced if provided; preferred over geometry_type for compatibility'
     )
 
 

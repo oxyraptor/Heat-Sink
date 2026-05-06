@@ -78,8 +78,7 @@ class HeatSinkAPITestCase(TestCase):
                 "motor_diameter": 0.06,
                 "motor_length": 0.12,
                 "casing_width": 0.08,
-                "casing_length": 0.12,
-                "casing_height": 0.08
+                "casing_length": 0.12
             },
             "environment": {
                 "ambient_temp": 25,
@@ -87,7 +86,6 @@ class HeatSinkAPITestCase(TestCase):
                 "air_velocity": 8
             },
             "constraints": {
-                "max_height": 0.08,
                 "min_fin_thickness": 0.001
             },
             "candidate_limit": 2
