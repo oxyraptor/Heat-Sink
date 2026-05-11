@@ -180,8 +180,8 @@ class HeatSinkViewSet(viewsets.ViewSet):
             if not result:
                 return Response(
                     {
-                        "detail": "No feasible design found for the given constraints. "
-                                  "Try increasing Airflow or Casing Dimensions."
+                        "detail": "The selected temperature target appears too low for the current setup. "
+                                  "Try increasing the target temperature, airflow, or casing dimensions."
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )
@@ -218,7 +218,7 @@ class HeatSinkViewSet(viewsets.ViewSet):
             env_dict = validated_data['environment']
             const_dict = validated_data['constraints']
             candidate_limit = validated_data.get('candidate_limit', 3)
-            target_alloy = validated_data.get('preferred_alloy') or "6063-T5"
+            target_alloy = validated_data.get('preferred_alloy')
 
             optimizer = DesignOptimizer(motor_dict, env_dict, const_dict)
             # Resolve preferred shape: prefer `preferred_shape`, fallback to legacy `geometry_type`.
@@ -242,8 +242,8 @@ class HeatSinkViewSet(viewsets.ViewSet):
             if not result:
                 return Response(
                     {
-                        "detail": "No feasible manufacturable design found for the given constraints. "
-                                  "Try increasing airflow, height, or casing dimensions."
+                        "detail": "The selected temperature target appears too low for a manufacturable design. "
+                                  "Try increasing the target temperature, airflow, height, or casing dimensions."
                     },
                     status=status.HTTP_400_BAD_REQUEST
                 )

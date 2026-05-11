@@ -122,3 +122,6 @@ graphify-out/
 .graphify_semantic_new.json
 .graphify_incremental.json
 .graphify_old.json
+
+.DETAILED_TECHNICAL_WORKING.md
+.DETAILED_TECHNICAL_WORKING.tex
